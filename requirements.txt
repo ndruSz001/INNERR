@@ -1,0 +1,12 @@
+streamlit
+torch
+torchvision
+transformers
+pillow
+pandas
+accelerate
+ollama
+# hashlib y os son built-in en Python, no necesitan instalación
+# Futuras dependencias según fases:
+# scikit-learn  # Para aprendizaje
+# sqlite3  # Built-in para bases de datos

@@ -1,0 +1,26 @@
+# Archivos y carpetas a ignorar por git
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.bak
+*.tmp
+*.log
+.env
+venv/
+.envrc
+.DS_Store
+Thumbs.db
+db_key.enc
+data_privada/
+notebooks/__pycache__/
+# Ignorar archivos de resultados grandes
+*.pt
+*.h5
+*.ckpt
+*.onnx
+# Ignorar configuraciones personales
+personalidad_aprendida.json
+personalidad_config.json
