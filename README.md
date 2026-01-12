@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Funcionalidades de depuración y utilidad
 
 ## Marcar respuestas como útiles o no útiles
@@ -126,3 +127,7 @@ Cuando integres PA-LLaVA, haz que TARS no solo analice imágenes, sino que etiqu
 - **Objetivo**: Detectar 'articulaciones', 'servomotores', 'estructuras' en renders de exoesqueletos.
 - **Implementación**: Crea una función que use el modelo para clasificar y etiquetar objetos en la imagen subida.
 - **Ejemplo**: Sube un render → TARS responde: "Detectado: 3 articulaciones, 2 servomotores. ¿Quieres simular movimiento?"
+=======
+# keys_1
+Personali_a
+>>>>>>> 80307d3bd450fd3b7e1b75094d8c34d72d565950
