@@ -24,3 +24,21 @@ notebooks/__pycache__/
 # Ignorar configuraciones personales
 personalidad_aprendida.json
 personalidad_config.json
+
+# Adiciones para estructura actual
+.ipynb_checkpoints/
+.vscode/
+build/
+models/
+*.gguf
+bench/outputs/
+deprecated/
+docker/
+*.bin
+llama.cpp/
+ENV/
+.venv/
+ENV/
+*.csv
+*.jsonl
+encrypted_db.py

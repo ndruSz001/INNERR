@@ -1,0 +1,21 @@
+[Unit]
+Description=TARS PC1 - Nodo Cognitivo (Inferencia + Memoria)
+After=network.target
+
+[Service]
+Type=simple
+User=ndrz02
+WorkingDirectory=/home/ndrz02/keys_1
+ExecStart=/usr/bin/python3 /home/ndrz02/keys_1/orchestrator/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tars-pc1
+
+# Limites de recursos
+MemoryLimit=8G
+CPUQuota=75%
+
+[Install]
+WantedBy=multi-user.target

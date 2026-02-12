@@ -1,0 +1,21 @@
+[Unit]
+Description=TARS PC2 - Nodo Procesamiento (Embeddings + Indexación)
+After=network.target
+
+[Service]
+Type=simple
+User=ndrz02
+WorkingDirectory=/home/ndrz02/keys_1
+ExecStart=/usr/bin/python3 /home/ndrz02/keys_1/api/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tars-pc2
+
+# Limites de recursos
+MemoryLimit=16G
+CPUQuota=90%
+
+[Install]
+WantedBy=multi-user.target

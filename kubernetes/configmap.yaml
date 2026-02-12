@@ -1,0 +1,250 @@
+# Kubernetes ConfigMap for TARS Configuration
+# Externalized configuration for deployment flexibility
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tars-config
+  namespace: tars
+  labels:
+    app: tars
+data:
+  # Application settings
+  TARS_ENV: "production"
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  LOG_LEVEL: "INFO"
+  
+  # Database
+  DATABASE_URL: "postgresql://tars:tars123@tars-postgres:5432/tars_db"
+  DATABASE_POOL_SIZE: "20"
+  DATABASE_MAX_OVERFLOW: "40"
+  DATABASE_POOL_TIMEOUT: "30"
+  
+  # Cache
+  REDIS_URL: "redis://tars-redis:6379/0"
+  CACHE_TTL_SECONDS: "3600"
+  
+  # API Configuration
+  API_HOST: "0.0.0.0"
+  API_PORT: "8000"
+  API_WORKERS: "4"
+  API_TIMEOUT: "30"
+  
+  # WebSocket
+  WS_HOST: "0.0.0.0"
+  WS_PORT: "8001"
+  WS_HEARTBEAT_INTERVAL: "30"
+  
+  # LLM Configuration
+  DEFAULT_LLM_ENGINE: "ollama"  # ollama, transformers, openai
+  OLLAMA_BASE_URL: "http://tars-ollama:11434"
+  OLLAMA_MODEL: "llama2"
+  OLLAMA_TIMEOUT: "300"
+  
+  # Embedding Configuration
+  EMBEDDING_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+  EMBEDDING_BATCH_SIZE: "32"
+  VECTOR_INDEX_TYPE: "faiss"  # faiss, milvus
+  
+  # Memory Configuration
+  MEMORY_MAX_CONVERSATIONS: "1000"
+  MEMORY_MAX_PROJECTS: "500"
+  MEMORY_SEMANTIC_SIZE: "512"
+  
+  # Processing Configuration
+  DOCUMENT_CHUNK_SIZE: "512"
+  DOCUMENT_OVERLAP: "50"
+  BATCH_PROCESSING_SIZE: "100"
+  NIGHTLY_SYNTHESIS_HOUR: "2"  # 02:00 AM
+  
+  # Monitoring & Logging
+  PROMETHEUS_ENABLED: "true"
+  PROMETHEUS_PORT: "9090"
+  LOG_FORMAT: "json"
+  LOG_FILE: "/app/logs/tars.log"
+  
+  # Security
+  CORS_ORIGINS: "http://localhost:3000,http://frontend:3000"
+  ALLOW_CREDENTIALS: "true"
+  
+  # Replica configuration
+  REPLICAS: "3"
+  REPLICA_ROLE: "primary"  # primary, secondary, replica
+
+---
+# Secrets (should be created separately with sensitive values)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tars-secrets
+  namespace: tars
+  labels:
+    app: tars
+type: Opaque
+stringData:
+  # Database credentials
+  POSTGRES_PASSWORD: "tars123"
+  DATABASE_PASSWORD: "tars123"
+  
+  # API Keys
+  OPENAI_API_KEY: ""  # Set via CI/CD or manual secret
+  HUGGINGFACE_TOKEN: ""
+  
+  # JWT/Auth
+  JWT_SECRET_KEY: "your-secret-key-change-in-production"
+  API_KEY: "tars-api-key-v1"
+  
+  # Encryption
+  ENCRYPTION_KEY: "your-encryption-key-32-chars-min"
+
+---
+# Ingress Configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tars-ingress
+  namespace: tars
+  labels:
+    app: tars
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.tars.local
+        - tars.local
+      secretName: tars-tls-cert
+  rules:
+    - host: api.tars.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tars-backend
+                port:
+                  number: 8000
+    - host: tars.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tars-frontend
+                port:
+                  number: 3000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: tars-backend
+                port:
+                  number: 8000
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: tars-backend
+                port:
+                  number: 8001
+
+---
+# Network Policy (restrict traffic)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tars-network-policy
+  namespace: tars
+spec:
+  podSelector:
+    matchLabels:
+      app: tars
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: tars
+      ports:
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 8001
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: tars
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: tars
+      ports:
+        - protocol: TCP
+          port: 8000
+
+---
+# Resource Quota (namespace limits)
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tars-quota
+  namespace: tars
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: "20Gi"
+    limits.cpu: "20"
+    limits.memory: "40Gi"
+    pods: "50"
+    services: "10"
+
+---
+# Limit Range (per-pod limits)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: tars-limits
+  namespace: tars
+spec:
+  limits:
+    - type: Pod
+      max:
+        cpu: "2"
+        memory: "2Gi"
+      min:
+        cpu: "100m"
+        memory: "128Mi"
+    - type: Container
+      max:
+        cpu: "2"
+        memory: "2Gi"
+      min:
+        cpu: "50m"
+        memory: "64Mi"
+      default:
+        cpu: "500m"
+        memory: "512Mi"
+      defaultRequest:
+        cpu: "250m"
+        memory: "256Mi"

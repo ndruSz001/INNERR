@@ -1,7 +1,39 @@
-<<<<<<< HEAD
-# Funcionalidades de depuración y utilidad
+# TARS - IA Personal Inteligente ⚡
 
-## Marcar respuestas como útiles o no útiles
+> **NUEVO**: Ahora con aceleración **llama.cpp** - respuestas 4x más rápidas 🚀
+
+## 🎯 Descripción
+TARS es una IA personal desarrollada para acompañarme (Ndrz) en mi carrera profesional, enfocada en prototipos médicos, exoesqueletos y otras investigaciones. Diseñada para ser escalable, segura y personalizable, con expansión futura a la familia.
+
+## ⚡ Optimizaciones Recientes
+
+### Aceleración con llama.cpp
+- **Velocidad**: Respuestas 4x más rápidas (0.5-1s vs 2-3s)
+- **Backend**: llama-cpp-python con modelos GGUF cuantizados
+- **Modelo**: WizardLM-7B Q4_0 (3.6GB, ~5 tokens/segundo)
+- **Sistema de prioridades**:
+  1. 🚀 llama.cpp (ultrarrápido, C++)
+  2. ⚡ Ollama (rápido, si disponible)
+  3. 📦 Phi-2 Transformers (fallback)
+
+Ver [INTEGRACION_LLAMA_CPP.md](INTEGRACION_LLAMA_CPP.md) para detalles técnicos.
+
+### Lazy Loading
+- LLaVA solo se carga cuando se necesita analizar imágenes
+- Phi-2 como único modelo de texto en inicio
+- Reducción de 50% en uso de memoria inicial
+- Tiempo de inicio: 20-30s (vs 60-90s antes)
+
+Ver documentación completa:
+- [OPTIMIZACION_APLICADA.md](OPTIMIZACION_APLICADA.md) - Optimizaciones implementadas
+- [RESUMEN_OPTIMIZACION.md](RESUMEN_OPTIMIZACION.md) - Resumen técnico
+- [GUIA_RAPIDA.md](GUIA_RAPIDA.md) - Guía de uso rápido
+
+---
+
+## 🎮 Funcionalidades de depuración y utilidad
+
+### Marcar respuestas como útiles o no útiles
 
 Durante el chat en terminal (usando `tars_terminal_chat.py`), puedes escribir:
 
@@ -10,15 +42,45 @@ Durante el chat en terminal (usando `tars_terminal_chat.py`), puedes escribir:
 
 Esto se registra en el archivo `utilidad_respuestas_tars.txt` para que puedas revisar después qué te sirvió y qué no.
 
-## Guardado interactivo de temas
+### Guardado interactivo de temas
 
 Si escribes frases como "guarda esto", "cambiar de tema", "nueva conversación", el sistema te preguntará dónde guardar el historial antes de limpiar o cambiar de tema.
 
 ---
-# TARS - IA Personal Inteligente
 
-## Descripción
-TARS es una IA personal desarrollada para acompañarme (Ndrz) en mi carrera profesional, enfocada en prototipos médicos, exoesqueletos y otras investigaciones. Diseñada para ser escalable, segura y personalizable, con expansión futura a la familia.
+## 🎯 Diferenciadores vs Copilot/ChatGPT
+
+TARS **NO compite** en programación general. Su valor está en:
+
+### 1. 🔒 **Privacidad Total** (Crítico para Medicina)
+- ✅ **100% local** - Sin enviar datos a internet
+- ✅ Ideal para imágenes médicas de pacientes (HIPAA compliance)
+- ✅ Datos de investigación confidenciales
+- ✅ Prototipos privados pre-publicación
+
+### 2. 🧠 **Memoria a Largo Plazo**
+- ✅ Recuerda **todos** tus proyectos y experimentos
+- ✅ Busca soluciones en tu historial ("¿cómo solucioné esto en octubre?")
+- ✅ Evolución de diseños documentada automáticamente
+- ✅ Base de conocimiento acumulativa que crece contigo
+
+### 3. 🔧 **Control de Hardware Real**
+- ✅ Controla ESP32, Arduino, sensores, actuadores
+- ✅ Ejecuta protocolos de prueba automatizados
+- ✅ Monitoreo en tiempo real de experimentos
+- ✅ Calibración automática de servos/motores
+
+### 4. 🧪 **Cerebros Expertos Especializados**
+- ✅ **Brain Medical**: Análisis de imágenes médicas con LLaVA
+- ✅ **Brain Mechanical**: Cálculos de ingeniería (torque, materiales, etc)
+- ✅ **Brain Conceptual**: Análisis ergonómico y de diseño
+- ✅ Integrados con tu contexto específico
+
+### 5. 📊 **Documentación Automática de Experimentos**
+- ✅ Registra setup, resultados, observaciones
+- ✅ Genera reportes de progreso de proyectos
+- ✅ Compara versiones de diseño
+- ✅ Historial completo de iteraciones
 
 ## Objetivos
 - **Base Sólida**: IA con capacidades de NLP, visión por computadora y aprendizaje continuo.
@@ -104,29 +166,35 @@ Ver comentarios en `tars_seguro.py`.
 Para asegurar que TARS sea un proyecto responsable y escalable, seguimos estas normas:
 
 ### Ciberseguridad
-- **Privacidad por Diseño**: Todos los datos de usuarios están aislados y encriptados. No se comparten datos entre perfiles sin consentimiento explícito.
-- **Autenticación Segura**: Uso de hashes SHA-256 para contraseñas. Modo exclusivo para prevenir accesos no autorizados.
-- **Protección de Datos**: Cumplir con principios similares a GDPR: minimización de datos, derecho al olvido (borrar datos de usuario), y auditorías regulares.
-- **Seguridad en Red**: En despliegues futuros (cluster, ESP32), usar VPN y encriptación TLS para comunicaciones.
-- **Actualizaciones**: Monitorear vulnerabilidades y actualizar dependencias regularmente.
 
 ### Computación
-- **Buenas Prácticas de Código**: Código modular, comentado y versionado con Git. Usar PEP 8 para estilo Python.
-- **Eficiencia**: Optimizar para hardware limitado (RTX 3050 inicialmente, luego ESP32). Evitar over-engineering.
-- **Versionado**: Commits descriptivos, branches para experimentos (ej. `feature/vision-module`).
-- **Testing**: Implementar pruebas unitarias con pytest para validar módulos.
 
 ### Área Médica
-- **Ética en Prototipos**: Todos los desarrollos médicos deben priorizar la seguridad del paciente. Documentar riesgos y obtener consentimientos informados si aplica.
-- **Normativas**: Cumplir con estándares como ISO 13485 para dispositivos médicos. TARS ayudará a generar documentación regulatoria.
-- **Privacidad Médica**: Datos sensibles (imágenes de resonancias) se tratan con HIPAA-like principios: acceso restringido, encriptación y no compartición.
-- **Transparencia**: TARS documentará automáticamente procesos para auditorías.
 
 ## Reto para Fase 2: Módulo de Visión Robótica
 Cuando integres PA-LLaVA, haz que TARS no solo analice imágenes, sino que etiquete componentes específicos:
-- **Objetivo**: Detectar 'articulaciones', 'servomotores', 'estructuras' en renders de exoesqueletos.
-- **Implementación**: Crea una función que use el modelo para clasificar y etiquetar objetos en la imagen subida.
-- **Ejemplo**: Sube un render → TARS responde: "Detectado: 3 articulaciones, 2 servomotores. ¿Quieres simular movimiento?"
+
+---
+
+## 🖥️ Setup en nuevas PCs y optimización para IA
+
+Para instalar y optimizar el proyecto en una nueva PC, sigue estos pasos:
+
+1. Clona el repositorio desde GitHub:
+  ```bash
+  git clone <URL_DEL_REPO>
+  ```
+2. Instala las dependencias principales:
+  ```bash
+  pip install -r requirements.txt
+  pip install -r requirements_sprint2.txt
+  ```
+3. Si tu PC tiene una GPU NVIDIA, consulta el archivo [SETUP_1660_SUPER.md](SETUP_1660_SUPER.md) para instrucciones específicas de optimización (drivers, CUDA, PyTorch, faiss-gpu).
+4. Para otros hardware, adapta el setup y documenta los cambios en un archivo similar.
+
+**Nota:** Cada PC puede requerir ajustes según su hardware y demanda de trabajo. El setup está pensado para que cada equipo contribuya al 100% a la IA.
+
+---
 =======
 # keys_1
 Personali_a

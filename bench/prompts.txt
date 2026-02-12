@@ -1,0 +1,10 @@
+Resume en 20 palabras los beneficios de usar IA en medicina.
+Explica brevemente cómo funciona un motor eléctrico.
+Da 3 recomendaciones para mejorar la batería de un portátil.
+Escribe un email corto pidiendo una reunión mañana a las 10.
+Resume en 30 palabras la novela 'Cien años de soledad'.
+¿Cuál es la diferencia entre precisión y recall en ML? Explícalo simple.
+Genera una receta corta para una tortilla de patatas.
+Describe en 2 frases qué es un exoesqueleto médico.
+Traduce al inglés: "Gracias por tu ayuda, hablamos pronto.".
+Sugiere 5 tags para un artículo sobre rehabilitación física.

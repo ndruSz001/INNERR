@@ -1,0 +1,148 @@
+version: '3.9'
+
+services:
+  # Backend API + AI Core
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: tars-backend
+    ports:
+      - "8000:8000"  # FastAPI
+      - "8001:8001"  # WebSocket
+    environment:
+      - TARS_ENV=production
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - DATABASE_URL=sqlite:///./data/tars.db
+      - REDIS_URL=redis://cache:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+      - ollama
+    networks:
+      - tars-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database (optional, for scaling beyond SQLite)
+  postgres:
+    image: postgres:15-alpine
+    container_name: tars-postgres
+    environment:
+      - POSTGRES_USER=tars
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-tars123}
+      - POSTGRES_DB=tars_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - tars-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tars"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  cache:
+    image: redis:7-alpine
+    container_name: tars-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - tars-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Ollama (local LLM service)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: tars-ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - tars-network
+    restart: unless-stopped
+    pull_policy: always
+
+  # Frontend (React dev server)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tars-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - tars-network
+    restart: unless-stopped
+
+  # Adminer (database UI - optional)
+  adminer:
+    image: adminer:latest
+    container_name: tars-adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - tars-network
+    restart: unless-stopped
+
+  # Grafana (monitoring - optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tars-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - tars-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  ollama-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  tars-network:
+    driver: bridge

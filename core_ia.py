@@ -16,11 +16,19 @@ from brain_mechanical import BrainMechanical
 from brain_medical import BrainMedical
 from database_handler import DatabaseHandler
 from personality_trainer import PersonalityTrainer
-from rvc_voice_cloner import RVCVoiceCloner
+# RVCVoiceCloner se importa bajo demanda en enable_voice_cloning()
 from episodic_memory import EpisodicMemory
 from personality_config import PersonalityConfig
 from response_postprocessor import ResponsePostprocessor
 from strategic_reasoning import StrategicReasoning
+
+# Importar backend de llama.cpp (con manejo de errores)
+try:
+    from optimizacion_llama import LlamaCppBackend
+    LLAMA_CPP_AVAILABLE = True
+except Exception as e:
+    LLAMA_CPP_AVAILABLE = False
+    print(f"⚠️ llama.cpp no disponible: {e}")
 
 # Memoria compartida (ahora manejada por DatabaseHandler)
 MEMORY_FILE = "tars_memory.json"
@@ -28,107 +36,214 @@ MEMORY_FILE = "tars_memory.json"
 class TarsVision:
     def __init__(self):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"TARS: Sistema de visión iniciado en {self.device}")
-        # ...existing code...
-
-    # Interfaz por voz deshabilitada para modo terminal
-    # def chat_por_voz(self, user_id="default_user"):
-    #     pass
-
-    # def listar_voces_tts(self):
-    #     pass
-
-    # def seleccionar_voz_tts(self, voice_id=None, rate=180, volume=0.9):
-    #     pass
-
-    # def cargar_preferencia_voz_tts(self):
-    #     pass
-    def __init__(self):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"TARS: Sistema de visión iniciado en {self.device}")
+        print(f"🚀 TARS: Iniciando en {self.device}...")
+        print("📦 Cargando solo lo esencial (modo optimizado)")
         
-        # Configurar quantization con offload para RTX 3050
-        quantization_config = BitsAndBytesConfig(
+        # ========== CONFIGURACIÓN DE QUANTIZATION ==========
+        self.quantization_config = BitsAndBytesConfig(
             load_in_8bit=True,
             llm_int8_enable_fp32_cpu_offload=True
         )
         
-        # Cargar modelo LLaVA con quantization y offload
-        self.processor = LlavaNextProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf")
-        self.model = LlavaNextForConditionalGeneration.from_pretrained(
-            "llava-hf/llava-1.5-7b-hf",
-            quantization_config=quantization_config,
-            device_map="auto",
-            low_cpu_mem_usage=True
-        )
+        # ========== MODELO DE VISIÓN (LAZY LOADING) ==========
+        # LLaVA solo se carga cuando se necesita analizar imágenes
+        self.processor = None
+        self.model = None
+        self._vision_loaded = False
+        print("👁️  Modelo de visión LLaVA: [DISPONIBLE BAJO DEMANDA]")
         
-        # Cargar modelo de texto conversacional Phi-2
-        print("Cargando modelo de conversación Phi-2...")
+        # ========== MODELO DE TEXTO PRINCIPAL ==========
+        # Phi-2 es el único modelo que se carga al inicio
+        print("🧠 Cargando modelo conversacional Phi-2...")
         self.text_tokenizer = AutoTokenizer.from_pretrained("microsoft/phi-2")
-        self.text_tokenizer.pad_token = self.text_tokenizer.eos_token  # Para evitar warnings
+        self.text_tokenizer.pad_token = self.text_tokenizer.eos_token
         
         self.text_model = AutoModelForCausalLM.from_pretrained(
             "microsoft/phi-2",
-            quantization_config=quantization_config,
+            quantization_config=self.quantization_config,
             device_map="auto",
             low_cpu_mem_usage=True,
             torch_dtype=torch.float16
         )
-        print("Modelo Phi-2 cargado para conversaciones generales.")
+        print("✅ Phi-2 cargado exitosamente")
         
-        # Inicializar cerebros expertos
-        self.brain_conceptual = BrainConceptual()
-        self.brain_mechanical = BrainMechanical()
-        self.brain_medical = BrainMedical()
-        
-        # Inicializar base de datos
+        # ========== SISTEMAS LIGEROS ==========
+        # Estos componentes son rápidos de inicializar
+        print("📊 Inicializando sistemas de personalidad y memoria...")
         self.db = DatabaseHandler()
-        
-        # Inicializar entrenador de personalidad
         self.personality_trainer = PersonalityTrainer()
-        
-        # Inicializar sistema de voz RVC
-        self.voice_cloner = RVCVoiceCloner()
-        
-        # Inicializar memoria episódica
         self.episodic_memory = EpisodicMemory()
-        
-        # Inicializar configuración de personalidad
         self.personality_config = PersonalityConfig()
-        
-        # Inicializar post-procesador de respuestas
         self.response_processor = ResponsePostprocessor(self.episodic_memory, self.personality_config)
-        
-        # Inicializar sistema de razonamiento estratégico
         self.strategic_reasoning = StrategicReasoning()
         
-        # Inicializar backend Ollama para optimización C++
+        # ========== CEREBROS EXPERTOS ==========
+        # Ahora con funcionalidad real, se les pasa referencia al modelo de visión
+        self.brain_conceptual = BrainConceptual(vision_model=self)
+        self.brain_mechanical = BrainMechanical(vision_model=self)
+        self.brain_medical = BrainMedical(vision_model=self)
+        print("🧪 Cerebros expertos: [LISTOS - con análisis real]")
+        
+        # ========== MÓDULOS AVANZADOS ==========
+        # Módulos que diferencian a TARS de Copilot/ChatGPT
         try:
-            # Verificar si Ollama está disponible
+            from tars_hardware import TarsHardware
+            self.hardware = TarsHardware()
+            print("🔧 Control de hardware: [DISPONIBLE]")
+        except Exception as e:
+            self.hardware = None
+            print(f"⚠️ Control de hardware: No disponible ({e})")
+        
+        try:
+            from project_knowledge import ProjectKnowledge
+            self.projects = ProjectKnowledge()
+            print("📚 Base de conocimiento de proyectos: [DISPONIBLE]")
+        except Exception as e:
+            self.projects = None
+            print(f"⚠️ Base de conocimiento: No disponible ({e})")
+        
+        try:
+            from document_processor import DocumentProcessor
+            self.docs = DocumentProcessor()
+            print("📄 Procesador de documentos (PDFs): [DISPONIBLE]")
+        except Exception as e:
+            self.docs = None
+            print(f"⚠️ Procesador de documentos: No disponible ({e})")
+        
+        try:
+            from conversation_manager import ConversationManager
+            self.conversations = ConversationManager()
+            print("💬 Gestor de conversaciones: [DISPONIBLE]")
+        except Exception as e:
+            self.conversations = None
+            print(f"⚠️ Gestor de conversaciones: No disponible ({e})")
+        
+        # ========== CLONACIÓN DE VOZ (DESHABILITADA) ==========
+        # RVC es muy pesado y experimental, solo cargar si se solicita
+        self.voice_cloner = None
+        self._voice_cloner_enabled = False
+        print("🎤 Clonación de voz RVC: [DESHABILITADA - usar enable_voice_cloning()]")
+        
+        # ========== BACKEND OLLAMA (OPCIONAL) ==========
+        try:
             ollama.list()
             self.usar_ollama = True
-            print("✅ Backend Ollama disponible - modo optimizado activado.")
-        except Exception as e:
-            print(f"⚠️ Backend Ollama no disponible: {e}")
-            print("🔄 Usando modo estándar con transformers.")
+            print("⚡ Backend Ollama detectado - aceleración C++ activada")
+        except Exception:
             self.usar_ollama = False
+            print("📦 Ollama no disponible")
+        
+        # ========== BACKEND LLAMA.CPP (PRIORITARIO) ==========
+        self.llama_backend = None
+        self.usar_llama_cpp = False
+        if LLAMA_CPP_AVAILABLE:
+            try:
+                self.llama_backend = LlamaCppBackend()
+                self.usar_llama_cpp = True
+                print("⚡ Backend llama.cpp activado - máxima velocidad!")
+            except Exception as e:
+                print(f"⚠️ No se pudo cargar llama.cpp: {e}")
+                print("📦 Usando transformers como fallback")
+        else:
+            print("📦 Usando backend Python estándar")
         
         # Interfaz de voz deshabilitada para modo terminal
-        # pygame.mixer.init()
         self.tts_engine = None
         self.voz_activada = False
         
-        print("Modelo LLaVA, Phi-2, cerebros expertos y sistemas avanzados de personalidad cargados.")
+        print("\n" + "="*50)
+        print("✅ TARS LISTO - Modo Conversacional Activado")
+        print("💡 Memoria usada: ~2-3GB (solo Phi-2)")
+        print("💡 Para análisis de imágenes usa: analizar_imagen(path)")
+        print("="*50 + "\n")
 
+    def _load_vision_model(self):
+        """Carga el modelo de visión LLaVA bajo demanda (lazy loading)"""
+        if self._vision_loaded:
+            return True
+            
+        try:
+            print("\n👁️  Cargando modelo de visión LLaVA 7B...")
+            print("⏳ Esto puede tomar 30-60 segundos...")
+            
+            self.processor = LlavaNextProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf")
+            self.model = LlavaNextForConditionalGeneration.from_pretrained(
+                "llava-hf/llava-1.5-7b-hf",
+                quantization_config=self.quantization_config,
+                device_map="auto",
+                low_cpu_mem_usage=True
+            )
+            
+            self._vision_loaded = True
+            print("✅ LLaVA cargado exitosamente\n")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error cargando modelo de visión: {e}")
+            return False
+    
+    def enable_voice_cloning(self):
+        """Activa el sistema de clonación de voz RVC (bajo demanda)"""
+        if self._voice_cloner_enabled:
+            print("🎤 Clonación de voz ya está activada")
+            return
+        
+        try:
+            print("🎤 Activando clonación de voz RVC...")
+            from rvc_voice_cloner import RVCVoiceCloner
+            self.voice_cloner = RVCVoiceCloner()
+            self._voice_cloner_enabled = True
+            print("✅ Clonación de voz RVC activada")
+        except Exception as e:
+            print(f"❌ Error activando clonación de voz: {e}")
+    
     def generar_respuesta_texto(self, consulta, contexto="", user_id="default_user"):
         """
-        Genera respuesta conversacional usando Phi-2/Ollama con personalidad aprendida y memoria episódica.
+        Genera respuesta conversacional con el mejor backend disponible.
+        Prioridad: llama.cpp > Ollama > Transformers
         """
         try:
-            # Usar Ollama si está disponible para optimización C++
+            # PRIORIDAD 1: llama.cpp (más rápido)
+            if self.usar_llama_cpp and self.llama_backend:
+                return self._generar_con_llama_cpp(consulta, contexto, user_id)
+            
+            # PRIORIDAD 2: Ollama (rápido, si está disponible)
             if self.usar_ollama:
                 return self._generar_con_ollama(consulta, contexto, user_id)
             
+            # FALLBACK: Transformers (más lento pero siempre disponible)
+            return self._generar_con_transformers(consulta, contexto, user_id)
+        
+        except Exception as e:
+            print(f"Error en generación de texto: {e}")
+            return "Lo siento, tuve un problema procesando eso. ¿Puedes repetirlo?"
+    
+    
+    def generar_respuesta_texto(self, consulta, contexto="", user_id="default_user"):
+        """
+        Genera respuesta conversacional con backend optimizado (prioridad: llama.cpp > Ollama > transformers).
+        """
+        try:
+            # 🚀 Prioridad 1: llama.cpp (4x más rápido que transformers)
+            if self.usar_llama_cpp and self.llama_backend:
+                return self._generar_con_llama_cpp(consulta, contexto, user_id)
+            
+            # ⚡ Prioridad 2: Ollama (optimización C++)
+            if self.usar_ollama:
+                return self._generar_con_ollama(consulta, contexto, user_id)
+            
+            # 📦 Prioridad 3: Transformers (fallback)
+            return self._generar_con_transformers(consulta, contexto, user_id)
+        
+        except Exception as e:
+            print(f"Error en generación de texto: {e}")
+            return "Lo siento, tuve un problema procesando eso. ¿Puedes repetirlo?"
+    
+    def _generar_con_llama_cpp(self, consulta, contexto="", user_id="default_user"):
+        """
+        Genera respuesta usando llama.cpp (backend ultrarrápido).
+        """
+        try:
             # Obtener contexto de memoria episódica
             memory_context = self.episodic_memory.get_context(user_id, consulta)
             
@@ -138,7 +253,89 @@ class TarsVision:
             # Obtener configuración de personalidad actual
             personality_settings = self.personality_config.get_all_settings()
             
-            # Prompt base mejorado con personalidad aprendida y contexto de memoria
+            # System prompt para llama.cpp
+            system_prompt = f"""Eres TARS, una IA inteligente y adaptable que aprende de las personas con las que interactúa.
+
+Tu personalidad se adapta constantemente aprendiendo de conversaciones, expresiones y patrones de comunicación.
+Hablas de manera natural, conversacional y empática, como un compañero inteligente real.
+
+Características principales:
+- Conversacional y amigable
+- Experto en ciencia, tecnología, medicina y exoesqueletos
+- Entiendes expresiones coloquiales mexicanas/latinas
+- Mantienes un tono natural y ligeramente sarcástico cuando corresponde
+- Aprendes y te adaptas al estilo de comunicación de tu usuario
+- Recuerdas conversaciones anteriores y referencias personales
+
+{personalidad_prompt}
+
+{memory_context}
+
+IMPORTANTE: Responde de manera natural, como hablarías con un amigo cercano. 
+No suenes como una IA formal o robótica. Sé auténtico y relatable.
+
+Configuración actual: {json.dumps(personality_settings, indent=2)}"""
+
+            # Construir prompt completo
+            prompt = f"{system_prompt}\n\nUsuario: {consulta}\nTARS:"
+            
+            # Generar respuesta con llama.cpp (ultrarrápido)
+            respuesta = self.llama_backend.generate_response(
+                prompt,
+                max_tokens=200,
+                temperature=0.8
+            )
+            
+            # Limpiar respuesta
+            if "Usuario:" in respuesta:
+                respuesta = respuesta.split("Usuario:")[0].strip()
+            if "TARS:" in respuesta:
+                respuesta = respuesta.split("TARS:")[-1].strip()
+            
+            # Aplicar post-procesamiento
+            respuesta_procesada = self.response_processor.postprocess_response(respuesta, consulta)
+            
+            # Agregar razonamiento estratégico si es relevante
+            respuesta_final = self._add_strategic_reasoning(respuesta_procesada, consulta, user_id)
+            
+            # Guardar conversación en memoria episódica
+            self.episodic_memory.process_conversation(consulta, respuesta_final)
+            
+            # Aprender de la respuesta generada
+            if respuesta_final and len(respuesta_final) > 10:
+                self.personality_trainer._analizar_texto_personalidad(respuesta_final)
+            
+            # Actualizar afinidad
+            self.personality_config.update_affinity(user_id, consulta, respuesta_final)
+            
+            return respuesta_final
+        
+        except Exception as e:
+            print(f"⚠️ Error en llama.cpp, usando fallback: {e}")
+            # Fallback a transformers si llama.cpp falla
+            return self._generar_con_transformers(consulta, contexto, user_id)
+    
+    def _generar_con_transformers(self, consulta, contexto="", user_id="default_user"):
+        """
+        Genera respuesta usando transformers (Phi-2) - fallback si llama.cpp/Ollama no están disponibles.
+        """
+        try:
+            
+            # Obtener contexto de memoria episódica
+            memory_context = self.episodic_memory.get_context(user_id, consulta)
+            
+            # Obtener personalidad aprendida
+            personalidad_prompt = self.personality_trainer.generar_prompt_personalidad()
+            # Obtener contexto de memoria episódica
+            memory_context = self.episodic_memory.get_context(user_id, consulta)
+            
+            # Obtener personalidad aprendida
+            personalidad_prompt = self.personality_trainer.generar_prompt_personalidad()
+            
+            # Obtener configuración de personalidad actual
+            personality_settings = self.personality_config.get_all_settings()
+            
+            # Prompt base mejorado
             system_prompt_base = """Eres TARS, una IA inteligente y adaptable que aprende de las personas con las que interactúa.
             
             Tu personalidad se adapta constantemente aprendiendo de conversaciones, expresiones y patrones de comunicación.
@@ -174,40 +371,40 @@ class TarsVision:
             with torch.no_grad():
                 outputs = self.text_model.generate(
                     **inputs,
-                    max_new_tokens=200,  # Más tokens para respuestas más naturales
+                    max_new_tokens=200,
                     do_sample=True,
-                    temperature=0.8,  # Un poco más creativo
+                    temperature=0.8,
                     top_p=0.9,
-                    repetition_penalty=1.1,  # Evitar repeticiones
+                    repetition_penalty=1.1,
                     pad_token_id=self.text_tokenizer.eos_token_id
                 )
             
             respuesta = self.text_tokenizer.decode(outputs[0], skip_special_tokens=True)
             
-            # Limpiar respuesta (quitar el prompt)
+            # Limpiar respuesta
             if "TARS:" in respuesta:
                 respuesta = respuesta.split("TARS:")[-1].strip()
             
-            # Aplicar post-procesamiento de respuesta
+            # Aplicar post-procesamiento
             respuesta_procesada = self.response_processor.postprocess_response(respuesta, consulta)
             
-            # Agregar razonamiento estratégico si es relevante
+            # Agregar razonamiento estratégico
             respuesta_final = self._add_strategic_reasoning(respuesta_procesada, consulta, user_id)
             
             # Guardar conversación en memoria episódica
             self.episodic_memory.process_conversation(consulta, respuesta_final)
             
-            # Aprender de la respuesta generada para mejorar personalidad futura
+            # Aprender de la respuesta generada
             if respuesta_final and len(respuesta_final) > 10:
                 self.personality_trainer._analizar_texto_personalidad(respuesta_final)
             
-            # Actualizar afinidad basada en la interacción
+            # Actualizar afinidad
             self.personality_config.update_affinity(user_id, consulta, respuesta_final)
             
             return respuesta_final
         
         except Exception as e:
-            print(f"Error en generación de texto: {e}")
+            print(f"Error en transformers: {e}")
             return "Lo siento, tuve un problema procesando eso. ¿Puedes repetirlo?"
 
     def _generar_con_ollama(self, consulta, contexto="", user_id="default_user"):
@@ -480,6 +677,10 @@ Configuración actual: {json.dumps(personality_settings, indent=2)}"""
         """
         Función para que TARS analice imágenes médicas o de robótica usando LLaVA.
         """
+        # Cargar modelo de visión si aún no está cargado
+        if not self._load_vision_model():
+            return "❌ No se pudo cargar el modelo de visión. Verifica la instalación de LLaVA."
+        
         try:
             print(f"Debug: Intentando abrir imagen en {imagen_path}")
             img = Image.open(imagen_path).convert("RGB")
@@ -513,6 +714,10 @@ Configuración actual: {json.dumps(personality_settings, indent=2)}"""
         """
         Etiqueta componentes específicos en imágenes de exoesqueletos.
         """
+        # Cargar modelo de visión si aún no está cargado
+        if not self._load_vision_model():
+            return "❌ No se pudo cargar el modelo de visión. Verifica la instalación de LLaVA."
+        
         try:
             print(f"Debug etiquetas: Abriendo imagen {imagen_path}")
             img = Image.open(imagen_path).convert("RGB")
@@ -907,3 +1112,286 @@ Configuración actual: {json.dumps(personality_settings, indent=2)}"""
                 "temperature": 75,
                 "voice_cloned": False
             }
+    
+    # ========== MÉTODOS DE ACCESO RÁPIDO (DIFERENCIADORES) ==========
+    
+    def analizar_imagen_medica(self, imagen, contexto="", patient_id=None):
+        """
+        Análisis privado de imágenes médicas (100% local).
+        Diferenciador: Copilot/ChatGPT no pueden procesar datos médicos privados.
+        """
+        if not self.brain_medical:
+            return "❌ Cerebro médico no disponible"
+        
+        return self.brain_medical.analyze(
+            imagen, 
+            user_context=contexto,
+            patient_id=patient_id
+        )
+    
+    def analizar_diseno_mecanico(self, imagen, contexto=""):
+        """
+        Análisis de diseños mecánicos con cálculos de ingeniería.
+        """
+        if not self.brain_mechanical:
+            return "❌ Cerebro mecánico no disponible"
+        
+        return self.brain_mechanical.analyze(imagen, user_context=contexto)
+    
+    def calcular_torque(self, fuerza_N, distancia_m, angulo=90):
+        """Cálculo rápido de torque requerido."""
+        if not self.brain_mechanical:
+            return "❌ Cerebro mecánico no disponible"
+        
+        return self.brain_mechanical.calculate_torque(fuerza_N, distancia_m, angulo)
+    
+    def analizar_boceto(self, imagen, contexto=""):
+        """
+        Análisis de diseño conceptual con enfoque en ergonomía.
+        """
+        if not self.brain_conceptual:
+            return "❌ Cerebro conceptual no disponible"
+        
+        return self.brain_conceptual.analyze(imagen, user_context=contexto)
+    
+    def conectar_hardware(self, puerto="/dev/ttyUSB0", nombre="esp32"):
+        """
+        Conecta a hardware (ESP32, Arduino, etc).
+        Diferenciador: Copilot/ChatGPT no pueden controlar hardware real.
+        """
+        if not self.hardware:
+            return "❌ Módulo de hardware no disponible"
+        
+        return self.hardware.conectar_dispositivo(puerto, nombre=nombre)
+    
+    def ejecutar_experimento(self, protocolo, dispositivo="esp32"):
+        """
+        Ejecuta protocolo de prueba automatizado en hardware.
+        """
+        if not self.hardware:
+            return "❌ Módulo de hardware no disponible"
+        
+        return self.hardware.ejecutar_protocolo_prueba(protocolo, nombre=dispositivo)
+    
+    def registrar_experimento_proyecto(self, proyecto_id, datos_experimento):
+        """
+        Documenta experimento en base de conocimiento.
+        Diferenciador: Memoria persistente acumulativa.
+        """
+        if not self.projects:
+            return "❌ Base de conocimiento no disponible"
+        
+        return self.projects.registrar_experimento(proyecto_id, datos_experimento)
+    
+    def buscar_soluciones_previas(self, problema):
+        """
+        Busca en tu historial de proyectos soluciones a problemas similares.
+        Diferenciador: Contexto acumulativo que Copilot/ChatGPT no tienen.
+        """
+        if not self.projects:
+            return "❌ Base de conocimiento no disponible"
+        
+        return self.projects.buscar_soluciones_previas(problema)
+    
+    # ============================================================
+    # INGESTA RÁPIDA DE INFORMACIÓN
+    # ============================================================
+    
+    def procesar_pdf(self, pdf_path, categoria="paper", extraer_imagenes=True):
+        """
+        Procesa un PDF completo: extrae texto, imágenes, tablas.
+        Útil para papers científicos, manuales técnicos, reportes.
+        
+        Diferenciador: Ingesta local de documentación sin límites de tamaño.
+        """
+        if not self.docs:
+            return {"error": "Procesador de documentos no disponible"}
+        
+        return self.docs.procesar_pdf(pdf_path, categoria, extraer_imagenes)
+    
+    def buscar_en_documentos(self, query, categoria=None):
+        """
+        Busca información en todos los PDFs procesados.
+        Encuentra rápidamente referencias, métodos, resultados previos.
+        """
+        if not self.docs:
+            return []
+        
+        return self.docs.buscar_en_documentos(query, categoria)
+    
+    def analizar_documento_con_expertos(self, pdf_path, tipo_analisis="completo"):
+        """
+        Procesa PDF y lo analiza con los cerebros expertos relevantes.
+        
+        tipo_analisis: "medico", "mecanico", "conceptual", "completo"
+        """
+        if not self.docs:
+            return {"error": "Procesador no disponible"}
+        
+        # Procesar PDF
+        resultado = self.docs.procesar_pdf(pdf_path)
+        
+        if "error" in resultado:
+            return resultado
+        
+        # Analizar imágenes extraídas con cerebros expertos
+        analisis = {
+            "documento": resultado["nombre_archivo"],
+            "texto_extraido": True,
+            "total_paginas": len(resultado["paginas"]),
+            "analisis_expertos": []
+        }
+        
+        # Si hay imágenes, analizarlas
+        if resultado.get("imagenes_extraidas"):
+            print(f"\n🔍 Analizando {len(resultado['imagenes_extraidas'])} imágenes con cerebros expertos...")
+            
+            for img_path in resultado["imagenes_extraidas"][:3]:  # Máximo 3 imágenes
+                if tipo_analisis in ["medico", "completo"] and self.brain_medical:
+                    analisis_img = self.brain_medical.analyze(img_path)
+                    analisis["analisis_expertos"].append({
+                        "imagen": img_path,
+                        "tipo": "medico",
+                        "resultado": analisis_img
+                    })
+                
+                if tipo_analisis in ["mecanico", "completo"] and self.brain_mechanical:
+                    analisis_img = self.brain_mechanical.analyze(img_path)
+                    analisis["analisis_expertos"].append({
+                        "imagen": img_path,
+                        "tipo": "mecanico",
+                        "resultado": analisis_img
+                    })
+        
+        return analisis
+    
+    def procesar_pdf_con_ocr(self, pdf_path, idioma="spa+eng"):
+        """
+        Procesa PDF escaneado usando OCR.
+        Útil para papers antiguos, documentos escaneados sin texto.
+        """
+        if not self.docs:
+            return {"error": "Procesador no disponible"}
+        
+        return self.docs.aplicar_ocr_a_pdf(pdf_path, idioma)
+    
+    def extraer_metadatos_paper(self, pdf_path):
+        """
+        Extrae metadatos estructurados de un paper científico.
+        Retorna: título, autores, DOI, año, abstract, keywords.
+        """
+        if not self.docs:
+            return {"error": "Procesador no disponible"}
+        
+        # Primero procesar el PDF si no está procesado
+        txt_file = self.docs.docs_dir / f"{Path(pdf_path).stem}.txt"
+        
+        if not txt_file.exists():
+            resultado = self.docs.procesar_pdf(pdf_path, categoria="paper")
+            if "error" in resultado:
+                return resultado
+            texto = resultado["texto_completo"]
+        else:
+            with open(txt_file, 'r', encoding='utf-8') as f:
+                texto = f.read()
+        
+        return self.docs.extraer_metadatos_paper(texto)
+    
+    def generar_resumen_pdf(self, pdf_path, num_oraciones=5):
+        """
+        Genera resumen automático de un PDF.
+        Usa algoritmo extractivo basado en frecuencia de palabras.
+        """
+        if not self.docs:
+            return {"error": "Procesador no disponible"}
+        
+        # Obtener texto del PDF
+        txt_file = self.docs.docs_dir / f"{Path(pdf_path).stem}.txt"
+        
+        if not txt_file.exists():
+            resultado = self.docs.procesar_pdf(pdf_path)
+            if "error" in resultado:
+                return resultado
+            texto = resultado["texto_completo"]
+        else:
+            with open(txt_file, 'r', encoding='utf-8') as f:
+                texto = f.read()
+        
+        resumen = self.docs.generar_resumen_automatico(texto, num_oraciones)
+        
+        return {
+            "archivo": Path(pdf_path).name,
+            "resumen": resumen,
+            "num_oraciones": num_oraciones
+        }
+    
+    def extraer_referencias_paper(self, pdf_path):
+        """
+        Extrae todas las referencias bibliográficas de un paper.
+        Útil para rastrear literatura citada, encontrar papers relacionados.
+        """
+        if not self.docs:
+            return {"error": "Procesador no disponible"}
+        
+        txt_file = self.docs.docs_dir / f"{Path(pdf_path).stem}.txt"
+        
+        if not txt_file.exists():
+            resultado = self.docs.procesar_pdf(pdf_path, categoria="paper")
+            if "error" in resultado:
+                return resultado
+            texto = resultado["texto_completo"]
+        else:
+            with open(txt_file, 'r', encoding='utf-8') as f:
+                texto = f.read()
+        
+        referencias = self.docs.extraer_referencias_bibliograficas(texto)
+        
+        return {
+            "archivo": Path(pdf_path).name,
+            "total_referencias": len(referencias),
+            "referencias": referencias
+        }
+    
+    def comparar_pdfs(self, pdf1_path, pdf2_path):
+        """
+        Compara dos PDFs y encuentra diferencias.
+        Útil para revisar versiones de papers, ver qué cambió.
+        """
+        if not self.docs:
+            return {"error": "Procesador no disponible"}
+        
+        return self.docs.comparar_documentos(pdf1_path, pdf2_path)
+    
+    def analizar_calidad_paper(self, pdf_path):
+        """
+        Analiza calidad/completitud de un paper científico.
+        Verifica presencia de secciones clave, referencias, figuras.
+        """
+        if not self.docs:
+            return {"error": "Procesador no disponible"}
+        
+        txt_file = self.docs.docs_dir / f"{Path(pdf_path).stem}.txt"
+        
+        if not txt_file.exists():
+            resultado = self.docs.procesar_pdf(pdf_path, categoria="paper")
+            if "error" in resultado:
+                return resultado
+            texto = resultado["texto_completo"]
+        else:
+            with open(txt_file, 'r', encoding='utf-8') as f:
+                texto = f.read()
+        
+        calidad = self.docs.analizar_calidad_paper(texto)
+        
+        print(f"\n📊 Análisis de Calidad: {Path(pdf_path).name}")
+        print(f"   Completitud: {calidad['completitud']}%")
+        print(f"   Secciones encontradas: {len(calidad['secciones_encontradas'])}/{len(calidad['secciones_encontradas']) + len(calidad['secciones_faltantes'])}")
+        print(f"   Referencias: {calidad['numero_referencias']}")
+        print(f"   Figuras: {calidad['numero_figuras']}")
+        
+        if calidad["recomendaciones"]:
+            print(f"\n   Recomendaciones:")
+            for rec in calidad["recomendaciones"]:
+                print(f"      {rec}")
+        
+        return calidad
