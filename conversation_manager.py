@@ -1,30 +1,9 @@
 """
 Sistema de Gestión de Conversaciones para TARS
-Permite:
-- Crear, listar, retomar, archivar conversaciones
-- Elegir modo: ocasional vs continuar conversación
-- Filtros al inicio para contexto
-- Guardado inteligente al inicio y al final
-"""
+from core.soren_conversation_manager import *
 
-import json
-import sqlite3
-from pathlib import Path
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional
-import uuid
-
-
-class ConversationManager:
-    """
-    Gestor de conversaciones con memoria persistente
-    Diferenciador: TARS recuerda TODAS tus conversaciones anteriores
-    """
-    
-    def __init__(self, db_path="tars_lifelong/conversations.db"):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self.current_conversation = None
+if __name__ == "__main__":
+    main()
         self.init_database()
     
     def init_database(self):

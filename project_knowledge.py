@@ -27,28 +27,10 @@ class ProjectKnowledge:
         try:
             self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
             self.embeddings_enabled = True
-        except:
-            print("⚠️ Embeddings no disponibles. Búsqueda será básica.")
-            self.embeddings_enabled = False
-    
-    def _load_index(self):
-        """Carga el índice de proyectos."""
-        if self.index_file.exists():
-            with open(self.index_file, 'r') as f:
-                return json.load(f)
-        return {"proyectos": {}, "experimentos": [], "soluciones": []}
-    
-    def _save_index(self):
-        """Guarda el índice de proyectos."""
-        with open(self.index_file, 'w') as f:
-            json.dump(self.index, f, indent=2)
-    
-    def crear_proyecto(self, nombre, descripcion, categoria="general"):
-        """
-        Crea un nuevo proyecto.
-        
-        Args:
-            nombre: Nombre del proyecto (ej: "Exoesqueleto_Rodilla_v3")
+        from core.soren_project_knowledge import *
+
+        if __name__ == "__main__":
+            main()
             descripcion: Descripción del proyecto
             categoria: Categoría (exoesqueleto, medico, robotica, etc)
         """

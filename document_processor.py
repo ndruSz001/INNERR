@@ -7,94 +7,11 @@ Diferenciador: Ingesta local de papers científicos, manuales técnicos, resulta
 import os
 import json
 from pathlib import Path
-from datetime import datetime
-from typing import List, Dict, Optional, Union
-import re
-from collections import Counter
-import difflib
+from core.pdf_processing import *
 
-try:
-    import pdfplumber
-    PDF_AVAILABLE = True
-except ImportError:
-    PDF_AVAILABLE = False
-    print("⚠️  pdfplumber no disponible. Instalar con: pip install pdfplumber")
-
-try:
-    from PIL import Image
-    IMAGE_AVAILABLE = True
-except ImportError:
-    IMAGE_AVAILABLE = False
-
-try:
-    from pdf2image import convert_from_path
-    PDF2IMAGE_AVAILABLE = True
-except ImportError:
-    PDF2IMAGE_AVAILABLE = False
-
-try:
-    import pytesseract
-    import cv2
-    import numpy as np
-    OCR_AVAILABLE = True
-except ImportError:
-    OCR_AVAILABLE = False
-    print("⚠️  OCR no disponible. Instalar: pip install pytesseract opencv-python")
-
-try:
-    import nltk
-    from nltk.tokenize import sent_tokenize, word_tokenize
-    from nltk.corpus import stopwords
-    NLP_AVAILABLE = True
-    # Descargar recursos necesarios (silenciosamente)
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except LookupError:
-        print("📥 Descargando recursos de NLTK...")
-        nltk.download('punkt', quiet=True)
-        nltk.download('stopwords', quiet=True)
-        nltk.download('averaged_perceptron_tagger', quiet=True)
-except ImportError:
-    NLP_AVAILABLE = False
-
-
-class DocumentProcessor:
-    """
-    Procesa documentos técnicos/científicos para alimentar a TARS
-    - PDFs: Papers, manuales, reportes
-    - Imágenes: Diagramas, gráficas, fotos
-    - Texto: Notas, observaciones
-    """
-    
-    def __init__(self, storage_dir="tars_lifelong/knowledge"):
-        self.storage_dir = Path(storage_dir)
-        self.storage_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Directorio para documentos procesados
-        self.docs_dir = self.storage_dir / "documents"
-        self.docs_dir.mkdir(exist_ok=True)
-        
-        # Directorio para imágenes extraídas
-        self.images_dir = self.storage_dir / "extracted_images"
-        self.images_dir.mkdir(exist_ok=True)
-        
-        # Directorio para OCR de PDFs escaneados
-        self.ocr_dir = self.storage_dir / "ocr_results"
-        self.ocr_dir.mkdir(exist_ok=True)
-        
-        # Índice de documentos procesados
-        self.index_file = self.storage_dir / "documents_index.json"
-        self.index = self._load_index()
-        
-        # Cache de stopwords para NLP
-        self.stopwords_es = set(stopwords.words('spanish')) if NLP_AVAILABLE else set()
-        self.stopwords_en = set(stopwords.words('english')) if NLP_AVAILABLE else set()
-    
-    def _load_index(self) -> Dict:
-        """Carga índice de documentos procesados"""
-        if self.index_file.exists():
-            with open(self.index_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
+if __name__ == "__main__":
+    # Punto de entrada para ejecutar el procesador modular
+    main()
         return {"documentos": [], "total": 0}
     
     def _save_index(self):

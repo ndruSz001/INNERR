@@ -4,51 +4,11 @@ from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration, 
 import json
 import os
 import random
-import pyttsx3
-from gtts import gTTS
-import pygame
-from io import BytesIO
-import speech_recognition as sr
-from datetime import datetime
-import ollama
-from brain_conceptual import BrainConceptual
-from brain_mechanical import BrainMechanical
-from brain_medical import BrainMedical
-from database_handler import DatabaseHandler
-from personality_trainer import PersonalityTrainer
-# RVCVoiceCloner se importa bajo demanda en enable_voice_cloning()
-from episodic_memory import EpisodicMemory
-from personality_config import PersonalityConfig
-from response_postprocessor import ResponsePostprocessor
-from strategic_reasoning import StrategicReasoning
+from core.ia import *
 
-# Importar backend de llama.cpp (con manejo de errores)
-try:
-    from optimizacion_llama import LlamaCppBackend
-    LLAMA_CPP_AVAILABLE = True
-except Exception as e:
-    LLAMA_CPP_AVAILABLE = False
-    print(f"⚠️ llama.cpp no disponible: {e}")
-
-# Memoria compartida (ahora manejada por DatabaseHandler)
-MEMORY_FILE = "tars_memory.json"
-
-class TarsVision:
-    def __init__(self):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"🚀 TARS: Iniciando en {self.device}...")
-        print("📦 Cargando solo lo esencial (modo optimizado)")
-        
-        # ========== CONFIGURACIÓN DE QUANTIZATION ==========
-        self.quantization_config = BitsAndBytesConfig(
-            load_in_8bit=True,
-            llm_int8_enable_fp32_cpu_offload=True
-        )
-        
-        # ========== MODELO DE VISIÓN (LAZY LOADING) ==========
-        # LLaVA solo se carga cuando se necesita analizar imágenes
-        self.processor = None
-        self.model = None
+if __name__ == "__main__":
+    # Punto de entrada para ejecutar la IA modular
+    main()
         self._vision_loaded = False
         print("👁️  Modelo de visión LLaVA: [DISPONIBLE BAJO DEMANDA]")
         

@@ -1,3 +1,12 @@
+import re
+try:
+    from document_processor import DocumentProcessor
+except ImportError:
+    DocumentProcessor = None
+try:
+    import requests
+except ImportError:
+    requests = None
 #!/usr/bin/env python3
 """
 TARS Terminal Chat con Detección Automática de Memoria
@@ -13,93 +22,10 @@ from datetime import datetime
 
 # Importar módulos de TARS
 try:
-    from conversation_manager import ConversationManager
-    MEMORIA_DISPONIBLE = True
-except ImportError:
-    MEMORIA_DISPONIBLE = False
-    print("⚠️ Sistema de memoria no disponible")
+    from core.assistant import main
 
-try:
-    from core_ia import TarsVision
-    CORE_DISPONIBLE = True
-    print("✅ Usando TARS completo (core_ia.py)")
-except ImportError:
-    try:
-        from core_ia_simple import TarsVisionSimple as TarsVision
-        CORE_DISPONIBLE = True
-        print("✅ Usando TARS simplificado (core_ia_simple.py)")
-    except ImportError:
-        CORE_DISPONIBLE = False
-        print("⚠️ Core de TARS no disponible")
-
-try:
-    from tars_voice import TarsVoice
-    VOZ_DISPONIBLE = True
-except ImportError:
-    VOZ_DISPONIBLE = False
-    print("⚠️ Sistema de voz no disponible")
-
-
-class TarsAsistenteInteligente:
-    """
-    Asistente TARS con detección automática de memoria
-    """
-    
-    def __init__(self):
-        self.manager = ConversationManager() if MEMORIA_DISPONIBLE else None
-        self.tars = TarsVision() if CORE_DISPONIBLE else None
-        self.conversacion_actual = None
-        self.modo_silencioso = False  # Para no mostrar detección cada vez
-        
-        # Sistema de voz
-        self.voz = None
-        self.voz_activa = False
-        
-        # Iniciar conversación por defecto (modo casual)
-        if self.manager:
-            self.conversacion_actual = self.manager.nueva_conversacion(
-                titulo=None,
-                categoria="casual",
-                auto_titulo=True
-            )
-    
-    def mostrar_banner(self):
-        """Banner de bienvenida"""
-        print("\n" + "╔" + "="*68 + "╗")
-        print("║" + " "*28 + "TARS v2.0" + " "*31 + "║")
-        print("║" + " "*15 + "IA Personal con Memoria de Largo Plazo" + " "*14 + "║")
-        print("╚" + "="*68 + "╝")
-        
-        # Preguntar por voz al inicio
-        if VOZ_DISPONIBLE:
-            print("\n🔊 ¿Quieres que TARS responda con voz? (s/n): ", end='')
-            respuesta = input().strip().lower()
-            if respuesta in ['s', 'si', 'sí', 'yes', 'y']:
-                self.voz = TarsVoice()
-                if self.voz.esta_disponible():
-                    self.voz_activa = True
-                    print("✅ Voz activada - TARS hablará sus respuestas")
-                else:
-                    print("⚠️ Sistema de voz no pudo inicializarse")
-                    self.voz = None
-            else:
-                print("📝 Modo solo texto")
-        
-        print("\n💡 Comandos especiales:")
-        print("   /memoria      - Ver conversaciones guardadas")
-        print("   /nueva        - Iniciar nueva conversación")
-        print("   /contexto     - Ver contexto actual")
-        print("   /conclusiones - Guardar conclusiones de esta conversación")
-        print("   /vincular     - Vincular con otra conversación")
-        print("   /integrar     - Crear conversación integradora")
-        print("   /grafo        - Ver grafo de conocimiento")
-        if self.voz_activa:
-            print("   /voz          - Activar/desactivar voz")
-        print("   /ayuda        - Mostrar ayuda completa")
-        print("   /salir        - Guardar y salir")
-        print("\n💬 Puedes decir 'volvamos a...' para retomar conversaciones")
-        print("="*70 + "\n")
-    
+    if __name__ == "__main__":
+        main()
     def detectar_intencion_nueva_conversacion(self, mensaje: str) -> bool:
         """
         Detecta si el usuario quiere iniciar una conversación nueva o cambiar de tema

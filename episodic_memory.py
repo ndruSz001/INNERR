@@ -148,44 +148,11 @@ class EpisodicMemory:
 
         for emotion, patterns in emotion_patterns.items():
             if any(pattern in message_lower for pattern in patterns):
-                return emotion
+                from core.memory import *
 
-        return 'neutral'
-
-    def _extract_topics(self, message):
-        """Extrae temas/topics del mensaje"""
-        topics = []
-
-        topic_keywords = {
-            'exoesqueleto': ['exoesqueleto', 'exo', 'prótesis', 'ortopédico'],
-            'medicina': ['médico', 'paciente', 'cirugía', 'rehabilitación', 'hospital'],
-            'ingeniería': ['ingeniería', 'diseño', 'prototipo', 'materiales', 'mecánico'],
-            'programación': ['código', 'programar', 'software', 'algoritmo', 'debug'],
-            'investigación': ['investigar', 'estudio', 'experimento', 'datos', 'análisis'],
-            'personal': ['familia', 'amigos', 'vida', 'sentimientos', 'personal']
-        }
-
-        message_lower = message.lower()
-        for topic, keywords in topic_keywords.items():
-            if any(keyword in message_lower for keyword in keywords):
-                topics.append(topic)
-
-        return topics
-
-    def _detect_urgency(self, message):
-        """Detecta nivel de urgencia en el mensaje"""
-        urgent_words = ['urgente', 'rápido', 'ya', 'inmediatamente', 'pronto', 'necesito ayuda']
-        message_lower = message.lower()
-
-        if any(word in message_lower for word in urgent_words):
-            return 'high'
-
-        if '?' in message or 'ayuda' in message_lower:
-            return 'medium'
-
-        return 'low'
-
-    def _analyze_sentiment(self, message):
+                if __name__ == "__main__":
+                    # Punto de entrada para ejecutar la memoria modular
+                    main()
         """Análisis básico de sentimiento"""
         positive_words = ['bueno', 'bien', 'genial', 'excelente', 'perfecto', 'feliz', 'contento']
         negative_words = ['malo', 'terrible', 'horrible', 'frustrado', 'enojado', 'triste']
