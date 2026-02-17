@@ -235,6 +235,9 @@ class ReplicationSync:
             'total_syncs': len(self.last_sync)
         }
     
+    
+                ## Bloque de pruebas eliminado para producción
+    
     def create_manifest(self, directory: str) -> str:
         """
         Crear manifest de todos los archivos

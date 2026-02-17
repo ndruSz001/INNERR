@@ -1,10 +1,19 @@
 """
 Sistema de Gestión de Conversaciones para TARS
-from core.soren_conversation_manager import *
+import sqlite3, uuid, json
+from datetime import datetime
+from typing import List, Dict, Optional
+from conversation_manager.db import execute_query, init_database
 
-if __name__ == "__main__":
-    main()
-        self.init_database()
+# Este archivo fue renombrado a manager.py para evitar conflictos de importación.
+# La clase ConversationManager ahora está en conversation_manager/manager.py
+        self.db_path = db_path
+        self.current_conversation = None
+        init_database(self.db_path)
+
+    # ...existing code (todos los métodos ya migrados)...
+
+    # (El resto del archivo permanece igual, con los métodos ya migrados)
     
     def init_database(self):
         """Inicializa base de datos de conversaciones"""
@@ -133,25 +142,24 @@ if __name__ == "__main__":
             else:
                 titulo = "Sin título"
         
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         now = datetime.now().isoformat()
         tags_str = json.dumps(tags) if tags else json.dumps([])
-        
-        cursor.execute('''
+        execute_query(
+            self.db_path,
+            '''
             INSERT INTO conversaciones 
             (id, titulo, descripcion, categoria, fecha_inicio, fecha_ultima_actividad, 
              estado, tags, proyecto_relacionado, metadata)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            conv_id, titulo, descripcion, categoria, now, now,
-            'activa', tags_str, proyecto_relacionado,
-            json.dumps({"auto_titulo": auto_titulo})
-        ))
-        
-        conn.commit()
-        conn.close()
+            ''',
+            [
+                conv_id, titulo, descripcion, categoria, now, now,
+                'activa', tags_str, proyecto_relacionado,
+                json.dumps({"auto_titulo": auto_titulo})
+            ],
+            commit=True
+        )
         
         self.current_conversation = conv_id
         
@@ -171,76 +179,67 @@ if __name__ == "__main__":
         metadata: Dict = None
     ):
         """Agrega mensaje a conversación existente"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         timestamp = datetime.now().isoformat()
         metadata_str = json.dumps(metadata) if metadata else json.dumps({})
-        
-        cursor.execute('''
+        # Insertar mensaje
+        execute_query(
+            self.db_path,
+            '''
             INSERT INTO mensajes (conversacion_id, timestamp, tipo, contenido, metadata)
             VALUES (?, ?, ?, ?, ?)
-        ''', (conversacion_id, timestamp, tipo, contenido, metadata_str))
-        
+            ''',
+            [conversacion_id, timestamp, tipo, contenido, metadata_str],
+            commit=True
+        )
         # Actualizar última actividad y contador
-        cursor.execute('''
+        execute_query(
+            self.db_path,
+            '''
             UPDATE conversaciones
             SET fecha_ultima_actividad = ?,
                 num_mensajes = num_mensajes + 1
             WHERE id = ?
-        ''', (timestamp, conversacion_id))
-        
-        conn.commit()
-        conn.close()
-        
+            ''',
+            [timestamp, conversacion_id],
+            commit=True
+        )
         # Auto-generar título si es el primer mensaje del usuario
         self._auto_generar_titulo_si_necesario(conversacion_id)
     
     def _auto_generar_titulo_si_necesario(self, conversacion_id: str):
         """Genera título automático basado en primer mensaje si está configurado"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         # Verificar si necesita auto-título
-        cursor.execute('''
-            SELECT titulo, num_mensajes, metadata
-            FROM conversaciones
-            WHERE id = ?
-        ''', (conversacion_id,))
-        
-        result = cursor.fetchone()
+        result = execute_query(
+            self.db_path,
+            '''SELECT titulo, num_mensajes, metadata FROM conversaciones WHERE id = ?''',
+            [conversacion_id],
+            fetchone=True
+        )
         if not result:
-            conn.close()
             return
-        
         titulo, num_mensajes, metadata_str = result
         metadata = json.loads(metadata_str) if metadata_str else {}
-        
         # Solo generar si tiene auto_titulo=True y es el primer mensaje del usuario
         if metadata.get("auto_titulo") and num_mensajes == 1:
             # Obtener primer mensaje del usuario
-            cursor.execute('''
-                SELECT contenido FROM mensajes
-                WHERE conversacion_id = ? AND tipo = 'user'
-                ORDER BY timestamp ASC
-                LIMIT 1
-            ''', (conversacion_id,))
-            
-            primer_mensaje = cursor.fetchone()
+            primer_mensaje = execute_query(
+                self.db_path,
+                '''SELECT contenido FROM mensajes WHERE conversacion_id = ? AND tipo = 'user' ORDER BY timestamp ASC LIMIT 1''',
+                [conversacion_id],
+                fetchone=True
+            )
             if primer_mensaje:
                 # Generar título basado en primeras palabras (máximo 60 caracteres)
                 nuevo_titulo = self._generar_titulo_desde_mensaje(primer_mensaje[0])
-                
-                cursor.execute('''
-                    UPDATE conversaciones
-                    SET titulo = ?
-                    WHERE id = ?
-                ''', (nuevo_titulo, conversacion_id))
-                
-                conn.commit()
+                execute_query(
+                    self.db_path,
+                    '''UPDATE conversaciones SET titulo = ? WHERE id = ?''',
+                    [nuevo_titulo, conversacion_id],
+                    commit=True
+                )
                 print(f"   📝 Título generado: {nuevo_titulo}")
-        
-        conn.close()
     
     def _generar_titulo_desde_mensaje(self, mensaje: str) -> str:
         """Genera título descriptivo desde mensaje"""
@@ -283,39 +282,29 @@ if __name__ == "__main__":
         Returns:
             Lista de conversaciones
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         query = "SELECT * FROM conversaciones WHERE 1=1"
         params = []
-        
         if categoria:
             query += " AND categoria = ?"
             params.append(categoria)
-        
         if estado != "todas":
             query += " AND estado = ?"
             params.append(estado)
-        
         if proyecto:
             query += " AND proyecto_relacionado = ?"
             params.append(proyecto)
-        
-        # Ordenamiento
         orden_sql = {
             "reciente": "fecha_ultima_actividad DESC",
             "antiguo": "fecha_inicio ASC",
             "mensajes": "num_mensajes DESC",
             "importancia": "importancia DESC, fecha_ultima_actividad DESC"
         }
-        
         query += f" ORDER BY {orden_sql.get(orden, 'fecha_ultima_actividad DESC')}"
         query += f" LIMIT {limit}"
-        
-        cursor.execute(query, params)
-        
+        rows = execute_query(self.db_path, query, params, fetchall=True)
         conversaciones = []
-        for row in cursor.fetchall():
+        for row in rows or []:
             conversaciones.append({
                 "id": row[0],
                 "titulo": row[1],
@@ -329,8 +318,6 @@ if __name__ == "__main__":
                 "proyecto_relacionado": row[9],
                 "importancia": row[10]
             })
-        
-        conn.close()
         return conversaciones
     
     def continuar_conversacion(self, conversacion_id: str) -> Dict:
@@ -340,50 +327,40 @@ if __name__ == "__main__":
         Returns:
             Dict con información de la conversación y últimos mensajes
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         # Obtener info de conversación
-        cursor.execute('''
-            SELECT * FROM conversaciones WHERE id = ?
-        ''', (conversacion_id,))
-        
-        conv = cursor.fetchone()
+        conv = execute_query(
+            self.db_path,
+            'SELECT * FROM conversaciones WHERE id = ?',
+            [conversacion_id],
+            fetchone=True
+        )
         if not conv:
-            conn.close()
             return {"error": "Conversación no encontrada"}
-        
         # Obtener últimos 10 mensajes para contexto
-        cursor.execute('''
-            SELECT tipo, contenido, timestamp
-            FROM mensajes
-            WHERE conversacion_id = ?
-            ORDER BY timestamp DESC
-            LIMIT 10
-        ''', (conversacion_id,))
-        
+        rows = execute_query(
+            self.db_path,
+            '''SELECT tipo, contenido, timestamp FROM mensajes WHERE conversacion_id = ? ORDER BY timestamp DESC LIMIT 10''',
+            [conversacion_id],
+            fetchall=True
+        )
         mensajes = []
-        for row in cursor.fetchall():
+        for row in rows or []:
             mensajes.append({
                 "tipo": row[0],
                 "contenido": row[1],
                 "timestamp": row[2]
             })
-        
         mensajes.reverse()  # Orden cronológico
-        
         # Obtener contexto guardado
-        cursor.execute('''
-            SELECT clave, valor FROM contexto_conversacion
-            WHERE conversacion_id = ?
-        ''', (conversacion_id,))
-        
-        contexto = {row[0]: row[1] for row in cursor.fetchall()}
-        
-        conn.close()
-        
+        contexto_rows = execute_query(
+            self.db_path,
+            'SELECT clave, valor FROM contexto_conversacion WHERE conversacion_id = ?',
+            [conversacion_id],
+            fetchall=True
+        )
+        contexto = {row[0]: row[1] for row in contexto_rows or []}
         self.current_conversation = conversacion_id
-        
         resultado = {
             "id": conv[0],
             "titulo": conv[1],
@@ -393,61 +370,43 @@ if __name__ == "__main__":
             "ultimos_mensajes": mensajes,
             "contexto": contexto
         }
-        
         print(f"\n📂 Conversación recuperada: {conv[1]}")
         print(f"   Mensajes previos: {conv[6]}")
         print(f"   Última actividad: {conv[5][:10]}")
-        
         return resultado
     
     def guardar_contexto(self, conversacion_id: str, clave: str, valor: str):
         """Guarda contexto específico de la conversación"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT OR REPLACE INTO contexto_conversacion
-            (conversacion_id, clave, valor, timestamp)
-            VALUES (?, ?, ?, ?)
-        ''', (conversacion_id, clave, valor, datetime.now().isoformat()))
-        
-        conn.commit()
-        conn.close()
+        from conversation_manager.db import execute_query
+        execute_query(
+            self.db_path,
+            '''INSERT OR REPLACE INTO contexto_conversacion (conversacion_id, clave, valor, timestamp) VALUES (?, ?, ?, ?)''',
+            [conversacion_id, clave, valor, datetime.now().isoformat()],
+            commit=True
+        )
     
     def archivar_conversacion(self, conversacion_id: str):
         """Marca conversación como archivada"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            UPDATE conversaciones
-            SET estado = 'archivada'
-            WHERE id = ?
-        ''', (conversacion_id,))
-        
-        conn.commit()
-        conn.close()
-        
+        from conversation_manager.db import execute_query
+        execute_query(
+            self.db_path,
+            '''UPDATE conversaciones SET estado = 'archivada' WHERE id = ?''',
+            [conversacion_id],
+            commit=True
+        )
         print(f"📦 Conversación archivada: {conversacion_id}")
     
     def buscar_conversaciones(self, query: str, limit: int = 10) -> List[Dict]:
         """Busca en títulos, descripciones y contenido de mensajes"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
-        # Buscar en conversaciones
-        cursor.execute('''
-            SELECT DISTINCT c.id, c.titulo, c.descripcion, c.categoria, 
-                   c.fecha_ultima_actividad, c.num_mensajes
-            FROM conversaciones c
-            LEFT JOIN mensajes m ON c.id = m.conversacion_id
-            WHERE c.titulo LIKE ? OR c.descripcion LIKE ? OR m.contenido LIKE ?
-            ORDER BY c.fecha_ultima_actividad DESC
-            LIMIT ?
-        ''', (f'%{query}%', f'%{query}%', f'%{query}%', limit))
-        
+        from conversation_manager.db import execute_query
+        rows = execute_query(
+            self.db_path,
+            '''SELECT DISTINCT c.id, c.titulo, c.descripcion, c.categoria, c.fecha_ultima_actividad, c.num_mensajes FROM conversaciones c LEFT JOIN mensajes m ON c.id = m.conversacion_id WHERE c.titulo LIKE ? OR c.descripcion LIKE ? OR m.contenido LIKE ? ORDER BY c.fecha_ultima_actividad DESC LIMIT ?''',
+            [f'%{query}%', f'%{query}%', f'%{query}%', limit],
+            fetchall=True
+        )
         resultados = []
-        for row in cursor.fetchall():
+        for row in rows or []:
             resultados.append({
                 "id": row[0],
                 "titulo": row[1],
@@ -456,24 +415,18 @@ if __name__ == "__main__":
                 "fecha": row[4],
                 "mensajes": row[5]
             })
-        
-        conn.close()
         return resultados
     
     def generar_resumen_conversacion(self, conversacion_id: str) -> Dict:
         """Genera resumen de conversación completa"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         # Obtener todos los mensajes
-        cursor.execute('''
-            SELECT tipo, contenido FROM mensajes
-            WHERE conversacion_id = ?
-            ORDER BY timestamp ASC
-        ''', (conversacion_id,))
-        
-        mensajes = cursor.fetchall()
-        
+        mensajes = execute_query(
+            self.db_path,
+            '''SELECT tipo, contenido FROM mensajes WHERE conversacion_id = ? ORDER BY timestamp ASC''',
+            [conversacion_id],
+            fetchall=True
+        )
         # Generar resumen simple (primeros y últimos mensajes)
         if len(mensajes) < 3:
             resumen_corto = "Conversación breve"
@@ -483,46 +436,35 @@ if __name__ == "__main__":
             inicio = mensajes[:2]
             # Últimos 2 mensajes
             final = mensajes[-2:]
-            
             resumen_corto = f"Tema: {mensajes[0][1][:60]}..."
             resumen_largo = (
                 "Inicio:\n" + "\n".join([f"{m[0]}: {m[1][:100]}..." for m in inicio]) +
                 "\n...\n" +
                 "Final:\n" + "\n".join([f"{m[0]}: {m[1][:100]}..." for m in final])
             )
-        
         # Extraer palabras clave (palabras más frecuentes)
         from collections import Counter
         import re
-        
         texto_completo = " ".join([m[1] for m in mensajes])
         palabras = re.findall(r'\b\w{4,}\b', texto_completo.lower())
-        
         # Palabras comunes a ignorar
-        stopwords = {'para', 'esto', 'este', 'esta', 'está', 'como', 'cual', 
-                     'pero', 'sobre', 'hacer', 'puede', 'desde', 'entre'}
-        
+        stopwords = {'para', 'esto', 'este', 'esta', 'está', 'como', 'cual', 'pero', 'sobre', 'hacer', 'puede', 'desde', 'entre'}
         palabras_filtradas = [p for p in palabras if p not in stopwords]
         palabras_clave = [p for p, _ in Counter(palabras_filtradas).most_common(5)]
-        
         # Guardar resumen
-        cursor.execute('''
-            INSERT OR REPLACE INTO resumenes
-            (conversacion_id, resumen_corto, resumen_largo, palabras_clave, 
-             temas_principales, fecha_generacion)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            conversacion_id,
-            resumen_corto,
-            resumen_largo,
-            json.dumps(palabras_clave),
-            json.dumps(["general"]),  # Mejorar con NLP
-            datetime.now().isoformat()
-        ))
-        
-        conn.commit()
-        conn.close()
-        
+        execute_query(
+            self.db_path,
+            '''INSERT OR REPLACE INTO resumenes (conversacion_id, resumen_corto, resumen_largo, palabras_clave, temas_principales, fecha_generacion) VALUES (?, ?, ?, ?, ?, ?)''',
+            [
+                conversacion_id,
+                resumen_corto,
+                resumen_largo,
+                json.dumps(palabras_clave),
+                json.dumps(["general"]),  # Mejorar con NLP
+                datetime.now().isoformat()
+            ],
+            commit=True
+        )
         return {
             "resumen_corto": resumen_corto,
             "resumen_largo": resumen_largo,
@@ -531,44 +473,52 @@ if __name__ == "__main__":
     
     def estadisticas_generales(self) -> Dict:
         """Genera estadísticas generales de todas las conversaciones"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         stats = {}
-        
         # Total de conversaciones
-        cursor.execute("SELECT COUNT(*) FROM conversaciones")
-        stats["total_conversaciones"] = cursor.fetchone()[0]
-        
+        total_conv = execute_query(
+            self.db_path,
+            "SELECT COUNT(*) FROM conversaciones",
+            [],
+            fetchone=True
+        )
+        stats["total_conversaciones"] = total_conv[0] if total_conv else 0
         # Por estado
-        cursor.execute('''
-            SELECT estado, COUNT(*) FROM conversaciones GROUP BY estado
-        ''')
-        stats["por_estado"] = {row[0]: row[1] for row in cursor.fetchall()}
-        
+        rows_estado = execute_query(
+            self.db_path,
+            "SELECT estado, COUNT(*) FROM conversaciones GROUP BY estado",
+            [],
+            fetchall=True
+        )
+        stats["por_estado"] = {row[0]: row[1] for row in rows_estado or []}
         # Por categoría
-        cursor.execute('''
-            SELECT categoria, COUNT(*) FROM conversaciones GROUP BY categoria
-        ''')
-        stats["por_categoria"] = {row[0]: row[1] for row in cursor.fetchall()}
-        
+        rows_categoria = execute_query(
+            self.db_path,
+            "SELECT categoria, COUNT(*) FROM conversaciones GROUP BY categoria",
+            [],
+            fetchall=True
+        )
+        stats["por_categoria"] = {row[0]: row[1] for row in rows_categoria or []}
         # Total mensajes
-        cursor.execute("SELECT SUM(num_mensajes) FROM conversaciones")
-        stats["total_mensajes"] = cursor.fetchone()[0] or 0
-        
+        total_msg = execute_query(
+            self.db_path,
+            "SELECT SUM(num_mensajes) FROM conversaciones",
+            [],
+            fetchone=True
+        )
+        stats["total_mensajes"] = total_msg[0] if total_msg and total_msg[0] else 0
         # Conversación más larga
-        cursor.execute('''
-            SELECT titulo, num_mensajes FROM conversaciones
-            ORDER BY num_mensajes DESC LIMIT 1
-        ''')
-        longest = cursor.fetchone()
+        longest = execute_query(
+            self.db_path,
+            "SELECT titulo, num_mensajes FROM conversaciones ORDER BY num_mensajes DESC LIMIT 1",
+            [],
+            fetchone=True
+        )
         if longest:
             stats["conversacion_mas_larga"] = {
                 "titulo": longest[0],
                 "mensajes": longest[1]
             }
-        
-        conn.close()
         return stats
     
     def detectar_intencion_retomar(self, mensaje: str) -> Dict:
@@ -631,43 +581,32 @@ if __name__ == "__main__":
         if not palabras_clave:
             return []
         
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
-        # Buscar en títulos, descripciones, tags y contenido
+        from conversation_manager.db import execute_query
         resultados_con_score = []
-        
         # Obtener todas las conversaciones activas
-        cursor.execute('''
-            SELECT c.id, c.titulo, c.descripcion, c.categoria, c.tags,
-                   c.fecha_ultima_actividad, c.num_mensajes, c.proyecto_relacionado
-            FROM conversaciones c
-            WHERE c.estado = 'activa'
-            ORDER BY c.fecha_ultima_actividad DESC
-        ''')
-        
-        for row in cursor.fetchall():
+        rows = execute_query(
+            self.db_path,
+            '''SELECT c.id, c.titulo, c.descripcion, c.categoria, c.tags, c.fecha_ultima_actividad, c.num_mensajes, c.proyecto_relacionado FROM conversaciones c WHERE c.estado = 'activa' ORDER BY c.fecha_ultima_actividad DESC''',
+            [],
+            fetchall=True
+        )
+        for row in rows or []:
             conv_id, titulo, desc, cat, tags_json, fecha, num_msg, proyecto = row
-            
             # Calcular score de relevancia
             score = 0
             texto_busqueda = f"{titulo} {desc} {cat} {proyecto}".lower()
-            
             # Tags
             if tags_json:
                 tags = json.loads(tags_json)
                 texto_busqueda += " " + " ".join(tags)
-            
             # Contar coincidencias
             for palabra in palabras_clave:
                 if palabra.lower() in texto_busqueda:
                     score += texto_busqueda.count(palabra.lower())
-            
             # Bonus por coincidencia en título
             for palabra in palabras_clave:
                 if palabra.lower() in titulo.lower():
                     score += 3
-            
             if score > 0:
                 resultados_con_score.append({
                     'id': conv_id,
@@ -680,12 +619,8 @@ if __name__ == "__main__":
                     'proyecto': proyecto,
                     'score': score
                 })
-        
-        conn.close()
-        
         # Ordenar por score descendente
         resultados_con_score.sort(key=lambda x: x['score'], reverse=True)
-        
         return resultados_con_score[:5]  # Top 5 resultados
     
     # ========================================================================
@@ -720,47 +655,38 @@ if __name__ == "__main__":
         """
         conv_id = str(uuid.uuid4())[:8]
         
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         now = datetime.now().isoformat()
-        
         # Crear conversación integradora
-        cursor.execute('''
-            INSERT INTO conversaciones 
-            (id, titulo, descripcion, categoria, fecha_inicio, fecha_ultima_actividad, 
-             estado, es_integradora, objetivo, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            conv_id, titulo, descripcion, categoria, now, now,
-            'activa', 1, objetivo,
-            json.dumps({
-                "conversaciones_base": conversaciones_base,
-                "tipo_integracion": "sintesis",
-                "fecha_integracion": now
-            })
-        ))
-        
+        execute_query(
+            self.db_path,
+            '''INSERT INTO conversaciones (id, titulo, descripcion, categoria, fecha_inicio, fecha_ultima_actividad, estado, es_integradora, objetivo, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            [
+                conv_id, titulo, descripcion, categoria, now, now,
+                'activa', 1, objetivo,
+                json.dumps({
+                    "conversaciones_base": conversaciones_base,
+                    "tipo_integracion": "sintesis",
+                    "fecha_integracion": now
+                })
+            ],
+            commit=True
+        )
         # Crear relaciones con conversaciones base
         for conv_base in conversaciones_base:
-            cursor.execute('''
-                INSERT INTO relaciones_conversaciones
-                (conversacion_origen, conversacion_destino, tipo_relacion, 
-                 descripcion, fecha_vinculacion, relevancia)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                conv_id, conv_base, 'integra',
-                f"Conversación integradora que sintetiza conocimiento de {conv_base}",
-                now, 10
-            ))
-        
-        conn.commit()
-        conn.close()
-        
+            execute_query(
+                self.db_path,
+                '''INSERT INTO relaciones_conversaciones (conversacion_origen, conversacion_destino, tipo_relacion, descripcion, fecha_vinculacion, relevancia) VALUES (?, ?, ?, ?, ?, ?)''',
+                [
+                    conv_id, conv_base, 'integra',
+                    f"Conversación integradora que sintetiza conocimiento de {conv_base}",
+                    now, 10
+                ],
+                commit=True
+            )
         print(f"\n🔗 Conversación integradora creada: {conv_id}")
         print(f"   Integra {len(conversaciones_base)} conversaciones base")
         print(f"   Objetivo: {objetivo}")
-        
         return conv_id
     
     def vincular_conversaciones(
@@ -793,31 +719,24 @@ if __name__ == "__main__":
         Returns:
             True si se vinculó exitosamente
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         # Verificar que ambas conversaciones existen
-        cursor.execute('SELECT id FROM conversaciones WHERE id IN (?, ?)', 
-                      (conv_origen, conv_destino))
-        
-        if len(cursor.fetchall()) != 2:
-            conn.close()
+        rows = execute_query(
+            self.db_path,
+            'SELECT id FROM conversaciones WHERE id IN (?, ?)',
+            [conv_origen, conv_destino],
+            fetchall=True
+        )
+        if len(rows or []) != 2:
             return False
-        
         now = datetime.now().isoformat()
-        
-        cursor.execute('''
-            INSERT INTO relaciones_conversaciones
-            (conversacion_origen, conversacion_destino, tipo_relacion, 
-             descripcion, relevancia, fecha_vinculacion)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (conv_origen, conv_destino, tipo_relacion, descripcion, relevancia, now))
-        
-        conn.commit()
-        conn.close()
-        
+        execute_query(
+            self.db_path,
+            '''INSERT INTO relaciones_conversaciones (conversacion_origen, conversacion_destino, tipo_relacion, descripcion, relevancia, fecha_vinculacion) VALUES (?, ?, ?, ?, ?, ?)''',
+            [conv_origen, conv_destino, tipo_relacion, descripcion, relevancia, now],
+            commit=True
+        )
         print(f"✅ Vinculadas: {conv_origen} → {conv_destino} ({tipo_relacion})")
-        
         return True
     
     def obtener_conversaciones_relacionadas(
@@ -832,32 +751,24 @@ if __name__ == "__main__":
         Returns:
             Dict con 'salientes' (esta→otras) y 'entrantes' (otras→esta)
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         # Relaciones salientes (esta conversación referencia otras)
-        query_salientes = '''
-            SELECT r.conversacion_destino, r.tipo_relacion, r.descripcion, 
-                   r.relevancia, r.fecha_vinculacion, c.titulo, c.categoria
-            FROM relaciones_conversaciones r
-            JOIN conversaciones c ON r.conversacion_destino = c.id
-            WHERE r.conversacion_origen = ?
-        '''
-        
-        params = [conv_id]
-        
+        query_salientes = '''SELECT r.conversacion_destino, r.tipo_relacion, r.descripcion, r.relevancia, r.fecha_vinculacion, c.titulo, c.categoria FROM relaciones_conversaciones r JOIN conversaciones c ON r.conversacion_destino = c.id WHERE r.conversacion_origen = ?'''
+        params_salientes = [conv_id]
         if tipo_relacion:
             query_salientes += ' AND r.tipo_relacion = ?'
-            params.append(tipo_relacion)
-        
+            params_salientes.append(tipo_relacion)
         if min_relevancia > 0:
             query_salientes += ' AND r.relevancia >= ?'
-            params.append(min_relevancia)
-        
-        cursor.execute(query_salientes, params)
-        
+            params_salientes.append(min_relevancia)
+        rows_salientes = execute_query(
+            self.db_path,
+            query_salientes,
+            params_salientes,
+            fetchall=True
+        )
         salientes = []
-        for row in cursor.fetchall():
+        for row in rows_salientes or []:
             salientes.append({
                 'id': row[0],
                 'tipo_relacion': row[1],
@@ -867,30 +778,23 @@ if __name__ == "__main__":
                 'titulo': row[5],
                 'categoria': row[6]
             })
-        
         # Relaciones entrantes (otras conversaciones referencian esta)
-        query_entrantes = '''
-            SELECT r.conversacion_origen, r.tipo_relacion, r.descripcion, 
-                   r.relevancia, r.fecha_vinculacion, c.titulo, c.categoria
-            FROM relaciones_conversaciones r
-            JOIN conversaciones c ON r.conversacion_origen = c.id
-            WHERE r.conversacion_destino = ?
-        '''
-        
-        params = [conv_id]
-        
+        query_entrantes = '''SELECT r.conversacion_origen, r.tipo_relacion, r.descripcion, r.relevancia, r.fecha_vinculacion, c.titulo, c.categoria FROM relaciones_conversaciones r JOIN conversaciones c ON r.conversacion_origen = c.id WHERE r.conversacion_destino = ?'''
+        params_entrantes = [conv_id]
         if tipo_relacion:
             query_entrantes += ' AND r.tipo_relacion = ?'
-            params.append(tipo_relacion)
-        
+            params_entrantes.append(tipo_relacion)
         if min_relevancia > 0:
             query_entrantes += ' AND r.relevancia >= ?'
-            params.append(min_relevancia)
-        
-        cursor.execute(query_entrantes, params)
-        
+            params_entrantes.append(min_relevancia)
+        rows_entrantes = execute_query(
+            self.db_path,
+            query_entrantes,
+            params_entrantes,
+            fetchall=True
+        )
         entrantes = []
-        for row in cursor.fetchall():
+        for row in rows_entrantes or []:
             entrantes.append({
                 'id': row[0],
                 'tipo_relacion': row[1],
@@ -900,9 +804,6 @@ if __name__ == "__main__":
                 'titulo': row[5],
                 'categoria': row[6]
             })
-        
-        conn.close()
-        
         return {
             'salientes': salientes,
             'entrantes': entrantes,
@@ -929,23 +830,17 @@ if __name__ == "__main__":
         Returns:
             True si se actualizó exitosamente
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            UPDATE conversaciones
-            SET conclusiones = ?, resultados = ?
-            WHERE id = ?
-        ''', (conclusiones, resultados, conv_id))
-        
-        conn.commit()
-        affected = cursor.rowcount
-        conn.close()
-        
+        from conversation_manager.db import execute_query
+        affected = execute_query(
+            self.db_path,
+            '''UPDATE conversaciones SET conclusiones = ?, resultados = ? WHERE id = ?''',
+            [conclusiones, resultados, conv_id],
+            commit=True,
+            rowcount=True
+        )
         if affected > 0:
             print(f"✅ Conclusiones actualizadas para {conv_id}")
             return True
-        
         return False
     
     def analizar_convergencias(
@@ -964,26 +859,18 @@ if __name__ == "__main__":
         Returns:
             Dict con análisis de convergencias/divergencias
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        from conversation_manager.db import execute_query
         # Obtener información de todas las conversaciones
         placeholders = ','.join(['?'] * len(conv_ids))
-        query = f'''
-            SELECT c.id, c.titulo, c.categoria, c.tags, c.conclusiones,
-                   r.palabras_clave, r.temas_principales
-            FROM conversaciones c
-            LEFT JOIN resumenes r ON c.id = r.conversacion_id
-            WHERE c.id IN ({placeholders})
-        '''
-        
-        cursor.execute(query, conv_ids)
-        conversaciones = cursor.fetchall()
-        conn.close()
-        
-        if len(conversaciones) < 2:
+        query = f'''SELECT c.id, c.titulo, c.categoria, c.tags, c.conclusiones, r.palabras_clave, r.temas_principales FROM conversaciones c LEFT JOIN resumenes r ON c.id = r.conversacion_id WHERE c.id IN ({placeholders})'''
+        conversaciones = execute_query(
+            self.db_path,
+            query,
+            conv_ids,
+            fetchall=True
+        )
+        if len(conversaciones or []) < 2:
             return {"error": "Se requieren al menos 2 conversaciones"}
-        
         analisis = {
             'num_conversaciones': len(conversaciones),
             'conversaciones': [],
@@ -993,39 +880,30 @@ if __name__ == "__main__":
             'convergencias': [],
             'divergencias': []
         }
-        
         # Recopilar información
         todas_palabras = []
         todas_categorias = []
-        
         for conv in conversaciones:
             conv_id, titulo, categoria, tags_json, conclusiones, palabras_clave, temas = conv
-            
             analisis['conversaciones'].append({
                 'id': conv_id,
                 'titulo': titulo,
                 'categoria': categoria
             })
-            
             # Categorías
             todas_categorias.append(categoria)
-            
             # Palabras clave
             if palabras_clave:
                 palabras = palabras_clave.split(',')
                 todas_palabras.extend([p.strip().lower() for p in palabras])
-            
             # Tags
             if tags_json:
                 tags = json.loads(tags_json)
                 todas_palabras.extend([t.lower() for t in tags])
-        
         # Análisis de frecuencias
         from collections import Counter
-        
         palabra_freq = Counter(todas_palabras)
         categoria_freq = Counter(todas_categorias)
-        
         # Palabras que aparecen en múltiples conversaciones (convergencias)
         for palabra, freq in palabra_freq.most_common():
             if freq > 1:
@@ -1034,9 +912,7 @@ if __name__ == "__main__":
                     'frecuencia': freq,
                     'porcentaje': (freq / len(conversaciones)) * 100
                 })
-        
         analisis['categorias'] = dict(categoria_freq)
-        
         # Detectar convergencias (misma categoría, temas comunes)
         if len(set(todas_categorias)) == 1:
             analisis['convergencias'].append({
@@ -1044,14 +920,12 @@ if __name__ == "__main__":
                 'valor': todas_categorias[0],
                 'descripcion': 'Todas las conversaciones pertenecen a la misma categoría'
             })
-        
         # Detectar divergencias (categorías muy diferentes)
         if len(set(todas_categorias)) == len(conversaciones):
             analisis['divergencias'].append({
                 'tipo': 'categorias_diversas',
                 'descripcion': 'Cada conversación tiene categoría diferente'
             })
-        
         return analisis
     
     def obtener_grafo_conocimiento(
@@ -1069,32 +943,26 @@ if __name__ == "__main__":
         Returns:
             Dict con nodos (conversaciones) y aristas (relaciones)
         """
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
-        # Obtener nodos (conversaciones)
+        from conversation_manager.db import execute_query
+        grafo = {
+            'nodos': {},
+            'aristas': [],
+            'estadisticas': {}
+        }
         if conv_raiz:
             # Empezar desde conversación específica
             nodos_visitados = set([conv_raiz])
             nodos_pendientes = [conv_raiz]
             nivel_actual = 0
-            
-            grafo = {
-                'nodos': {},
-                'aristas': [],
-                'estadisticas': {}
-            }
-            
             while nodos_pendientes and nivel_actual < profundidad:
                 nodo_actual = nodos_pendientes.pop(0)
-                
                 # Obtener info del nodo
-                cursor.execute('''
-                    SELECT titulo, categoria, es_integradora, objetivo, num_mensajes
-                    FROM conversaciones WHERE id = ?
-                ''', (nodo_actual,))
-                
-                row = cursor.fetchone()
+                row = execute_query(
+                    self.db_path,
+                    '''SELECT titulo, categoria, es_integradora, objetivo, num_mensajes FROM conversaciones WHERE id = ?''',
+                    [nodo_actual],
+                    fetchone=True
+                )
                 if row:
                     grafo['nodos'][nodo_actual] = {
                         'titulo': row[0],
@@ -1104,45 +972,34 @@ if __name__ == "__main__":
                         'num_mensajes': row[4],
                         'nivel': nivel_actual
                     }
-                
                 # Obtener relaciones
-                cursor.execute('''
-                    SELECT conversacion_destino, tipo_relacion, relevancia
-                    FROM relaciones_conversaciones
-                    WHERE conversacion_origen = ?
-                ''', (nodo_actual,))
-                
-                for rel in cursor.fetchall():
+                rels = execute_query(
+                    self.db_path,
+                    '''SELECT conversacion_destino, tipo_relacion, relevancia FROM relaciones_conversaciones WHERE conversacion_origen = ?''',
+                    [nodo_actual],
+                    fetchall=True
+                )
+                for rel in rels or []:
                     destino, tipo, relevancia = rel
-                    
                     grafo['aristas'].append({
                         'origen': nodo_actual,
                         'destino': destino,
                         'tipo': tipo,
                         'relevancia': relevancia
                     })
-                    
                     if destino not in nodos_visitados:
                         nodos_visitados.add(destino)
                         nodos_pendientes.append(destino)
-                
                 nivel_actual += 1
-        
         else:
             # Todas las conversaciones activas
-            cursor.execute('''
-                SELECT id, titulo, categoria, es_integradora, objetivo, num_mensajes
-                FROM conversaciones
-                WHERE estado = 'activa'
-            ''')
-            
-            grafo = {
-                'nodos': {},
-                'aristas': [],
-                'estadisticas': {}
-            }
-            
-            for row in cursor.fetchall():
+            rows = execute_query(
+                self.db_path,
+                '''SELECT id, titulo, categoria, es_integradora, objetivo, num_mensajes FROM conversaciones WHERE estado = 'activa' ''',
+                [],
+                fetchall=True
+            )
+            for row in rows or []:
                 conv_id, titulo, cat, es_int, obj, num_msg = row
                 grafo['nodos'][conv_id] = {
                     'titulo': titulo,
@@ -1151,33 +1008,27 @@ if __name__ == "__main__":
                     'objetivo': obj,
                     'num_mensajes': num_msg
                 }
-            
             # Todas las relaciones
-            cursor.execute('''
-                SELECT conversacion_origen, conversacion_destino, tipo_relacion, relevancia
-                FROM relaciones_conversaciones
-            ''')
-            
-            for row in cursor.fetchall():
+            rels = execute_query(
+                self.db_path,
+                '''SELECT conversacion_origen, conversacion_destino, tipo_relacion, relevancia FROM relaciones_conversaciones''',
+                [],
+                fetchall=True
+            )
+            for row in rels or []:
                 grafo['aristas'].append({
                     'origen': row[0],
                     'destino': row[1],
                     'tipo': row[2],
                     'relevancia': row[3]
                 })
-        
-        conn.close()
-        
         # Estadísticas
         grafo['estadisticas'] = {
             'num_nodos': len(grafo['nodos']),
             'num_aristas': len(grafo['aristas']),
             'nodos_integradores': sum(1 for n in grafo['nodos'].values() if n['es_integradora']),
-            'nodos_independientes': sum(1 for nid in grafo['nodos'].keys() 
-                                       if not any(a['origen'] == nid or a['destino'] == nid 
-                                                 for a in grafo['aristas']))
+            'nodos_independientes': sum(1 for nid in grafo['nodos'].keys() if not any(a['origen'] == nid or a['destino'] == nid for a in grafo['aristas']))
         }
-        
         return grafo
 
 

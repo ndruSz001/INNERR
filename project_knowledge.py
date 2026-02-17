@@ -80,7 +80,8 @@ class ProjectKnowledge:
                 "setup": "Motor 200W, ratio 1:50, carga 5kg",
                 "procedimiento": "...",
                 "resultados": {...},
-                "observaciones": "Vibración excesiva a >30 rpm",
+                import os
+                from core.config import PROJECTS_DIR
                 "conclusion": "Necesita mejor aislamiento"
             }
         """
@@ -91,7 +92,8 @@ class ProjectKnowledge:
         # Añadir metadata
         experimento_data["fecha"] = datetime.now().isoformat()
         experimento_data["proyecto_id"] = proyecto_id
-        experimento_data["id"] = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                        self.projects_dir = Path(projects_dir)
+                        self.projects_dir.mkdir(parents=True, exist_ok=True)
         
         # Guardar experimento
         proyecto_dir = self.projects_dir / proyecto_id

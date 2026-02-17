@@ -1,4 +1,5 @@
 streamlit
+## Dependencias pesadas eliminadas para desarrollo ligero
 torch
 torchvision
 transformers

@@ -2,7 +2,7 @@
 # Instalar con: pip install -r requirements_sprint2.txt
 
 # Procesamiento (FASE 4)
-sentence-transformers==3.0.1      # Embeddings 384-dim
+## Dependencia pesada eliminada para desarrollo ligero
 faiss-cpu==1.7.4                  # Vector index (o faiss-gpu para GPU)
 
 # Infrastructure (FASE 5)

@@ -226,32 +226,4 @@ class WatchdogService:
 
 
 # Ejemplo de uso
-if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s [%(name)s] %(levelname)s: %(message)s'
-    )
-    
-    watchdog = WatchdogService(check_interval=30)
-    
-    # Registrar procesos
-    watchdog.register_process(
-        name="PC1_Cognitivo",
-        command="python3 orchestrator/main.py",
-        restart_on_crash=True,
-        max_restarts=5
-    )
-    
-    watchdog.register_process(
-        name="PC2_Procesamiento",
-        command="python3 -m uvicorn api.main:app --port 8001",
-        restart_on_crash=True,
-        max_restarts=5
-    )
-    
-    # Iniciar procesos
-    for proc_name in watchdog.processes:
-        watchdog.start_process(proc_name)
-    
-    # Comenzar monitoreo
-    watchdog.start_monitoring()
+    ## Bloque de pruebas eliminado para producción

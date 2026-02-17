@@ -272,11 +272,4 @@ if __name__ == "__main__":
         backup_name="vector_index",
         compress=True
     )
-    
-    # Listar backups
-    print("\n📊 Backups disponibles:")
-    print(json.dumps(manager.list_backups(), indent=2, default=str))
-    
-    # Estadísticas
-    print("\n📈 Estadísticas:")
-    print(json.dumps(manager.get_backup_stats(), indent=2))
+    ## Bloque de pruebas eliminado para producción

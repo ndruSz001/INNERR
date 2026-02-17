@@ -5,7 +5,8 @@ import os
 from pathlib import Path
 from datetime import datetime
 try:
-	from document_processor import DocumentProcessor
+	from processing.document_processor import DocumentProcessor
+	from core.logging_config import get_logger
 except ImportError:
 	DocumentProcessor = None
 try:
@@ -42,6 +43,7 @@ except ImportError:
 # ...
 
 class TarsAsistenteInteligente:
+	logger = get_logger(__name__)
 	# ... (toda la implementación de la clase, igual que en tars_asistente.py)
 	pass
 
