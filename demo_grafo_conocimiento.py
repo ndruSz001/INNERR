@@ -5,6 +5,14 @@ Crea conversaciones de ejemplo y muestra capacidades
 """
 
 from conversation_manager import ConversationManager
+from conversation_manager.graph import (
+    crear_conversacion_integradora,
+    vincular_conversaciones,
+    obtener_conversaciones_relacionadas,
+    actualizar_conclusiones,
+    analizar_convergencias,
+    obtener_grafo_conocimiento
+)
 from datetime import datetime, timedelta
 import json
 
@@ -55,16 +63,17 @@ def crear_ejemplo_completo():
         "Peso: 450g. Eficiencia: 85%.")
     
     # Guardar conclusiones
-    manager.actualizar_conclusiones(
+    actualizar_conclusiones(
+        manager.db_path,
         conv_torque,
-        conclusiones="Motor Maxon EC90 con reductor 1:50 es óptimo para asistencia parcial. "
-                    "Torque efectivo: 12 Nm continuo (suficiente para 30% asistencia). "
-                    "Relación peso/potencia: excelente.",
-        resultados="Motor seleccionado: Maxon EC90 flat\n"
-                  "Reductor: 1:50 planetario\n"
-                  "Torque: 12 Nm continuo\n"
-                  "Peso: 450g\n"
-                  "Costo estimado: $800"
+        "Motor Maxon EC90 con reductor 1:50 es óptimo para asistencia parcial. "
+        "Torque efectivo: 12 Nm continuo (suficiente para 30% asistencia). "
+        "Relación peso/potencia: excelente.",
+        "Motor seleccionado: Maxon EC90 flat\n"
+        "Reductor: 1:50 planetario\n"
+        "Torque: 12 Nm continuo\n"
+        "Peso: 450g\n"
+        "Costo estimado: $800"
     )
     
     print(f"   ✅ Conversación creada: {conv_torque}")
@@ -89,13 +98,14 @@ def crear_ejemplo_completo():
         "2. Encoder absoluto: Ángulo articulación rodilla\n"
         "3. Células de carga: Fuerza interacción usuario (opcional pero recomendado)")
     
-    manager.actualizar_conclusiones(
+    actualizar_conclusiones(
+        manager.db_path,
         conv_sensores,
-        conclusiones="IMUs MPU9250 para cinemática, encoder magnético AS5048 para posición absoluta. "
-                    "Frecuencia muestreo: 200 Hz mínimo.",
-        resultados="IMU: MPU9250 (2x) - $15 c/u\n"
-                  "Encoder: AS5048A magnético - $25\n"
-                  "Total sensores: ~$55"
+        "IMUs MPU9250 para cinemática, encoder magnético AS5048 para posición absoluta. "
+        "Frecuencia muestreo: 200 Hz mínimo.",
+        "IMU: MPU9250 (2x) - $15 c/u\n"
+        "Encoder: AS5048A magnético - $25\n"
+        "Total sensores: ~$55"
     )
     
     print(f"   ✅ Conversación creada: {conv_sensores}")
@@ -119,15 +129,16 @@ def crear_ejemplo_completo():
         "- Rodamientos de bolas en eje articulación\n"
         "- Transmisión por correa dentada (menor backlash que engranajes)")
     
-    manager.actualizar_conclusiones(
+    actualizar_conclusiones(
+        manager.db_path,
         conv_mecanico,
-        conclusiones="Estructura modular en aluminio 7075. "
-                    "Transmisión por correa HTD5M. "
-                    "Peso estimado estructura: 600g.",
-        resultados="Material: Aluminio 7075-T6\n"
-                  "Rodamientos: 2x 6204 sellados\n"
-                  "Correa: HTD5M 15mm ancho\n"
-                  "Poleas: 20T motor, 100T salida (1:5 adicional)"
+        "Estructura modular en aluminio 7075. "
+        "Transmisión por correa HTD5M. "
+        "Peso estimado estructura: 600g.",
+        "Material: Aluminio 7075-T6\n"
+        "Rodamientos: 2x 6204 sellados\n"
+        "Correa: HTD5M 15mm ancho\n"
+        "Poleas: 20T motor, 100T salida (1:5 adicional)"
     )
     
     print(f"   ✅ Conversación creada: {conv_mecanico}")
@@ -159,13 +170,14 @@ def crear_ejemplo_completo():
         "- Ajustar rigidez según fase\n"
         "- Usar IMUs para estimar fase en tiempo real")
     
-    manager.actualizar_conclusiones(
+    actualizar_conclusiones(
+        manager.db_path,
         conv_control,
-        conclusiones="Control de impedancia con detección de fase vía IMU. "
-                    "Rigidez alta en stance (soporte), baja en swing (movimiento libre).",
-        resultados="Algoritmo: Impedancia variable\n"
-                  "Frecuencia control: 200 Hz\n"
-                  "Microcontrolador: Teensy 4.1 (600 MHz)"
+        "Control de impedancia con detección de fase vía IMU. "
+        "Rigidez alta en stance (soporte), baja en swing (movimiento libre).",
+        "Algoritmo: Impedancia variable\n"
+        "Frecuencia control: 200 Hz\n"
+        "Microcontrolador: Teensy 4.1 (600 MHz)"
     )
     
     print(f"   ✅ Conversación creada: {conv_control}")
@@ -188,13 +200,14 @@ def crear_ejemplo_completo():
         "Para 2h autonomía: 60 Wh\n"
         "Batería LiPo 4S (14.8V) 4000 mAh → 59 Wh (suficiente)")
     
-    manager.actualizar_conclusiones(
+    actualizar_conclusiones(
+        manager.db_path,
         conv_baterias,
-        conclusiones="Batería LiPo 4S 4000 mAh (59 Wh) da 2h autonomía con margen.",
-        resultados="Batería: Turnigy 4S 4000 mAh 30C\n"
-                  "Peso: 380g\n"
-                  "Costo: $60\n"
-                  "Autonomía estimada: 2-2.5h"
+        "Batería LiPo 4S 4000 mAh (59 Wh) da 2h autonomía con margen.",
+        "Batería: Turnigy 4S 4000 mAh 30C\n"
+        "Peso: 380g\n"
+        "Costo: $60\n"
+        "Autonomía estimada: 2-2.5h"
     )
     
     print(f"   ✅ Conversación creada: {conv_baterias}")
@@ -211,27 +224,30 @@ def crear_ejemplo_completo():
     print("\n🔗 Vinculando conversaciones relacionadas...")
     
     # Torque → Mecánico (el diseño mecánico depende del motor seleccionado)
-    manager.vincular_conversaciones(
+    vincular_conversaciones(
+        manager.db_path,
         conv_torque, conv_mecanico,
-        tipo_relacion="depende",
-        descripcion="El diseño mecánico debe acomodar motor Maxon EC90",
-        relevancia=9
+        "depende",
+        "El diseño mecánico debe acomodar motor Maxon EC90",
+        9
     )
     
     # Sensores → Control (control usa sensores)
-    manager.vincular_conversaciones(
+    vincular_conversaciones(
+        manager.db_path,
         conv_sensores, conv_control,
-        tipo_relacion="depende",
-        descripcion="Algoritmo de control usa IMUs para detección de fase",
-        relevancia=10
+        "depende",
+        "Algoritmo de control usa IMUs para detección de fase",
+        10
     )
     
     # Torque → Baterías (potencia motor determina batería)
-    manager.vincular_conversaciones(
+    vincular_conversaciones(
+        manager.db_path,
         conv_torque, conv_baterias,
-        tipo_relacion="complementa",
-        descripcion="Potencia motor determina capacidad batería necesaria",
-        relevancia=8
+        "complementa",
+        "Potencia motor determina capacidad batería necesaria",
+        8
     )
     
     print("   ✅ 3 relaciones creadas")
@@ -242,7 +258,7 @@ def crear_ejemplo_completo():
     todas_conversaciones = [conv_torque, conv_sensores, conv_mecanico, 
                            conv_control, conv_baterias]
     
-    analisis = manager.analizar_convergencias(todas_conversaciones)
+    analisis = analizar_convergencias(manager.db_path, todas_conversaciones)
     
     print(f"\n   📊 Resultado del análisis:")
     print(f"      • Conversaciones analizadas: {analisis['num_conversaciones']}")
@@ -256,15 +272,16 @@ def crear_ejemplo_completo():
     # Crear conversación integradora
     print("\n🔗 Creando conversación integradora...")
     
-    conv_integradora = manager.crear_conversacion_integradora(
-        titulo="Especificación técnica completa - Exoesqueleto Rodilla v1",
-        objetivo="Integrar todos los análisis de actuación, sensado, mecánica, "
-                 "control y potencia en una especificación técnica unificada "
-                 "que sirva como base para fabricación de prototipo.",
-        conversaciones_base=todas_conversaciones,
-        categoria="sintesis",
-        descripcion="Documento maestro que combina conclusiones de 5 "
-                   "investigaciones independientes realizadas durante 3 meses."
+    conv_integradora = crear_conversacion_integradora(
+        manager.db_path,
+        "Especificación técnica completa - Exoesqueleto Rodilla v1",
+        "Integrar todos los análisis de actuación, sensado, mecánica, "
+        "control y potencia en una especificación técnica unificada "
+        "que sirva como base para fabricación de prototipo.",
+        todas_conversaciones,
+        "sintesis",
+        "Documento maestro que combina conclusiones de 5 "
+        "investigaciones independientes realizadas durante 3 meses."
     )
     
     print(f"   ✅ Conversación integradora creada: {conv_integradora}")
@@ -313,16 +330,17 @@ def crear_ejemplo_completo():
     )
     
     # Guardar conclusiones de integradora
-    manager.actualizar_conclusiones(
+    actualizar_conclusiones(
+        manager.db_path,
         conv_integradora,
-        conclusiones="Especificación técnica completa lista para prototipado. "
-                    "Sistema viable con componentes COTS. "
-                    "Peso y costo dentro de objetivos.",
-        resultados="Documento de especificación técnica completo\n"
-                  "BOM (Bill of Materials) definido\n"
-                  "Peso objetivo: 1.5 kg ✓\n"
-                  "Costo objetivo: <$1500 ✓\n"
-                  "Listo para fase de fabricación"
+        "Especificación técnica completa lista para prototipado. "
+        "Sistema viable con componentes COTS. "
+        "Peso y costo dentro de objetivos.",
+        "Documento de especificación técnica completo\n"
+        "BOM (Bill of Materials) definido\n"
+        "Peso objetivo: 1.5 kg ✓\n"
+        "Costo objetivo: <$1500 ✓\n"
+        "Listo para fase de fabricación"
     )
     
     print(f"   💡 Especificación técnica guardada")
@@ -335,7 +353,7 @@ def crear_ejemplo_completo():
     print("📊 ESTADÍSTICAS DEL GRAFO DE CONOCIMIENTO")
     print("="*70)
     
-    grafo = manager.obtener_grafo_conocimiento()
+    grafo = obtener_grafo_conocimiento(manager.db_path)
     
     stats = grafo['estadisticas']
     print(f"\n✅ Grafo completo:")
@@ -347,7 +365,7 @@ def crear_ejemplo_completo():
     # Explorar integradora
     print(f"\n🔍 Conversación integradora '{conv_integradora}':")
     
-    relaciones = manager.obtener_conversaciones_relacionadas(conv_integradora)
+    relaciones = obtener_conversaciones_relacionadas(manager.db_path, conv_integradora)
     
     print(f"   📖 Referencias (salientes): {len(relaciones['salientes'])}")
     for rel in relaciones['salientes']:

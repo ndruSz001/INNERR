@@ -1,29 +1,20 @@
-"""
-Core IA simplificado para TARS
-Funciona sin dependencias pesadas
-Usa Ollama para respuestas inteligentes
-"""
-
 import json
 import random
 from datetime import datetime
 from pathlib import Path
 from tars_tools import TarsTools
 
-# Intentar importar ollama
 try:
     import ollama
     OLLAMA_DISPONIBLE = True
 except ImportError:
     OLLAMA_DISPONIBLE = False
 
-
 class TarsVisionSimple:
     """
     Versión simplificada de TARS que funciona sin torch/transformers
     Usa respuestas inteligentes basadas en patrones
     """
-    
     def __init__(self):
         self.nombre = "TARS"
         self.personalidad = {
@@ -32,15 +23,10 @@ class TarsVisionSimple:
             "formalidad": 30,
             "técnico": 80
         }
-        
-        # Sistema de herramientas
         self.tools = TarsTools()
-        
-        # Verificar Ollama
         self.usar_ollama = OLLAMA_DISPONIBLE
         if self.usar_ollama:
             try:
-                # Verificar que el modelo esté disponible
                 ollama.list()
                 modelo_activo = self._seleccionar_mejor_modelo()
                 print(f"✅ TARS con Ollama (modelo: {modelo_activo})")
@@ -50,81 +36,48 @@ class TarsVisionSimple:
                 print("✅ TARS Simple cargado (modo básico)")
         else:
             print("✅ TARS Simple cargado (modo básico)")
-        
-        # Contexto de conversación
         self.contexto = []
         self.max_contexto = 10
-    
+
     def generar_respuesta(self, mensaje: str) -> str:
-        """
-        Genera respuestas basadas en patrones y contexto
-        Usa Ollama si está disponible, o respuestas por patrón
-        """
         mensaje_lower = mensaje.lower().strip()
-        
-        # 1. Verificar si necesita herramienta
         intencion_herramienta = self.tools.detectar_intencion_herramienta(mensaje)
         if intencion_herramienta:
             herramienta, params = intencion_herramienta
             resultado = self.tools.ejecutar_herramienta(herramienta, **params)
-            
             if resultado['exito']:
-                # Formatear respuesta con los datos de la herramienta
                 respuesta = self._formatear_respuesta_herramienta(herramienta, resultado['resultado'])
             else:
                 respuesta = f"No pude obtener esa información: {resultado.get('error', 'Error desconocido')}"
-            
-            # Guardar en contexto
             self.contexto.append({"rol": "usuario", "contenido": mensaje, "timestamp": datetime.now()})
             self.contexto.append({"rol": "asistente", "contenido": respuesta, "timestamp": datetime.now()})
             if len(self.contexto) > self.max_contexto:
                 self.contexto.pop(0)
-            
             return respuesta
-        
-        # 2. Usar Ollama si está disponible
         if self.usar_ollama:
             try:
                 respuesta = self._generar_con_ollama(mensaje)
-                
-                # Guardar en contexto
                 self.contexto.append({"rol": "usuario", "contenido": mensaje, "timestamp": datetime.now()})
                 self.contexto.append({"rol": "asistente", "contenido": respuesta, "timestamp": datetime.now()})
                 if len(self.contexto) > self.max_contexto:
                     self.contexto.pop(0)
-                
                 return respuesta
             except Exception as e:
                 print(f"⚠️ Error con Ollama: {e}, usando respuestas por patrón")
                 import traceback
                 traceback.print_exc()
-        
-        # 3. Fallback: Patrones
         respuesta = self._buscar_patron(mensaje_lower)
-        
         if not respuesta:
-            # Respuesta por defecto con contexto
             respuesta = self._generar_respuesta_contextual(mensaje)
-        
-        # Agregar respuesta al contexto
         self.contexto.append({"rol": "usuario", "contenido": mensaje, "timestamp": datetime.now()})
         self.contexto.append({"rol": "asistente", "contenido": respuesta, "timestamp": datetime.now()})
         if len(self.contexto) > self.max_contexto:
             self.contexto.pop(0)
-        
         return respuesta
-    
+
     def _generar_con_ollama(self, mensaje: str) -> str:
-        """
-        Genera respuesta usando Ollama
-        """
-        # Intentar usar el mejor modelo disponible
         modelo = self._seleccionar_mejor_modelo()
-        
-        # Construir contexto para Ollama
         mensajes = []
-        
-        # System prompt
         mensajes.append({
             "role": "system",
             "content": (
@@ -134,24 +87,65 @@ class TarsVisionSimple:
                 "Si no sabes algo, lo admites."
             )
         })
-        
-        # Agregar contexto reciente (últimos 4 intercambios = 8 mensajes)
         for ctx in self.contexto[-8:]:
             mensajes.append({
                 "role": "user" if ctx["rol"] == "usuario" else "assistant",
                 "content": ctx["contenido"]
             })
-        
-        # Mensaje actual del usuario
-        # ...existing code...
-        
-        # Enviar mensaje a Ollama
-        respuesta = ollama.generate(
+        mensajes.append({
+            "role": "user",
+            "content": mensaje
+        })
+        response = ollama.chat(
             model=modelo,
             messages=mensajes,
-            temperature=0.7,
-            max_tokens=512
+            options={
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "num_predict": 200,
+            }
         )
-        
-        return respuesta.text
+        return response['message']['content']
 
+    def _seleccionar_mejor_modelo(self) -> str:
+        try:
+            modelos_disponibles = ollama.list()
+            nombres = [m['name'] for m in modelos_disponibles.get('models', [])]
+            preferencias = [
+                'llama3.1:8b',
+                'llama3.2:3b',
+                'llama3:8b',
+                'llama3:latest'
+            ]
+            for modelo in preferencias:
+                if modelo in nombres:
+                    return modelo
+            return 'llama3.2:3b'
+        except:
+            return 'llama3.2:3b'
+
+    def _formatear_respuesta_herramienta(self, herramienta: str, datos: dict) -> str:
+        if herramienta == "clima":
+            if "error" in datos:
+                return f"No pude obtener el clima: {datos['error']}"
+            return (
+                f"En {datos['ciudad']}: {datos['temperatura']} "
+                f"(sensación de {datos['sensacion']}), {datos['condicion']}. "
+                f"Humedad: {datos['humedad']}, viento: {datos['viento']}."
+            )
+        # ...otros formateadores de herramientas...
+        return str(datos)
+
+    def _buscar_patron(self, mensaje_lower: str) -> str:
+        patrones = {
+            "hola": "¡Hola! ¿En qué puedo ayudarte hoy?",
+            "quién eres": "Soy TARS, tu asistente de IA personal.",
+            "qué puedes hacer": "Puedo ayudarte con información, cálculos, clima, y más. ¡Pregunta lo que quieras!"
+        }
+        for patron, respuesta in patrones.items():
+            if patron in mensaje_lower:
+                return respuesta
+        return ""
+
+    def _generar_respuesta_contextual(self, mensaje: str) -> str:
+        return f"Recibí tu mensaje: '{mensaje}'. ¿Puedes darme más detalles o contexto?"
