@@ -1,3 +1,41 @@
+# --- Distributed Flow & Robustness ---
+
+## 🔄 Distributed Workflow
+
+1. **PC1 (Coordinator)**: Recibe inferencias de modelos grandes y coordina el procesamiento.
+2. **PC2 (Worker)**: Procesa embeddings y modelos pequeños localmente. Reenvía inferencias de modelos grandes a PC1.
+3. **Comunicación RPC**: Utiliza endpoints `/inference`, `/embed`, `/health`, `/status`.
+4. **Manejo de errores**: Reintentos automáticos, logs detallados, reconexión si el nodo remoto no responde.
+5. **Monitoreo**: Health checks periódicos y reconexión automática.
+
+### Ejemplo de flujo:
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant PC2
+  participant PC1
+  User->>PC2: Solicita embedding o inferencia
+  PC2->>PC2: Procesa embedding/modelo pequeño
+  PC2->>PC1: Reenvía inferencia de modelo grande
+  PC1->>PC1: Procesa inferencia
+  PC1-->>PC2: Devuelve resultado
+  PC2-->>User: Devuelve resultado
+```
+
+### Endpoints principales:
+- `/inference`: Inferencia distribuida
+- `/embed`: Embedding local
+- `/health`: Estado rápido
+- `/status`: Estado detallado
+
+### Robustez:
+- Reintentos automáticos en RPC
+- Logs detallados de cada llamada
+- Reconexión automática si el nodo remoto falla
+- Health checks periódicos
+
+---
 # 🖥️ Distributed Module - Multi-GPU Setup
 
 This module enables two PCs with different GPUs to work together as a distributed AI system.

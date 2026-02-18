@@ -7,6 +7,11 @@ Responsabilidad: Gestionar alertas del sistema
 - Crítico, Warning, Info, Debug
 - Canales: email, slack, webhook
 - Rate limiting
+
+Ejemplo de uso:
+    from alerts.alert_manager import AlertManager, AlertLevel
+    manager = AlertManager()
+    manager.send_alert("Test alerta", level=AlertLevel.INFO)
 """
 
 import logging

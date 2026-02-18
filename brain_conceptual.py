@@ -1,6 +1,15 @@
-# Cerebro Conceptual - Agente Diseñador
-# Especializado en estética, ergonomía y proporciones para bocetos y diseños.
-# Análisis de usabilidad y diseño centrado en el usuario.
+
+"""
+brain_conceptual.py
+Agente diseñador especializado en estética, ergonomía y proporciones para bocetos y diseños.
+Incluye análisis de usabilidad y diseño centrado en el usuario.
+
+Ejemplo de uso:
+    from brain_conceptual import BrainConceptual
+    brain = BrainConceptual()
+    sugerencias = brain.comparar_iteraciones("v1.png", "v2.png")
+    print(sugerencias)
+"""
 
 from pathlib import Path
 import json

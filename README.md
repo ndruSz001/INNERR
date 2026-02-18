@@ -115,11 +115,22 @@ Para instalar y optimizar el proyecto en una nueva PC, sigue estos pasos:
 
 **Nota:** Cada PC puede requerir ajustes según su hardware y demanda de trabajo. El setup está pensado para que cada equipo contribuya al 100% a la IA.
 
-=======
-# keys_1
-Personali_a
->>>>>>> 80307d3bd450fd3b7e1b75094d8c34d72d565950
-=======
-# dimensity
-perosnal
->>>>>>> 53882aca0571a378882336309706545ff4c54870
+## 🚀 Instalación automática de dependencias
+
+Para instalar todas las dependencias necesarias, ejecuta:
+
+```bash
+bash install_deps.sh
+```
+
+Esto instalará los paquetes listados en `requirements.txt`, `requirements_sprint2.txt` y otros requeridos para el funcionamiento del sistema.
+
+## 📝 Licencia y autoría
+
+Este proyecto es de código abierto bajo licencia MIT.
+
+- Autor: ndrz02 (2026)
+- Consulta AUTORÍA_Y_LICENCIA.md para detalles y ejemplos de cabecera.
+- Consulta LICENSE para el texto completo de la licencia.
+
+---

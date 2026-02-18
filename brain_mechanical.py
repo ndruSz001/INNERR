@@ -1,6 +1,15 @@
-# Cerebro Mecánico - Agente Ingeniero
-# Especializado en cinemática, torque, materiales y análisis CAD.
-# Cálculos de ingeniería para validación de diseños mecánicos.
+
+"""
+brain_mechanical.py
+Agente ingeniero especializado en cinemática, torque, materiales y análisis CAD.
+Incluye cálculos de ingeniería para validación de diseños mecánicos.
+
+Ejemplo de uso:
+    from brain_mechanical import BrainMechanical
+    brain = BrainMechanical()
+    resultado = brain.analyze("pieza.png", user_context="robot", tipo_analisis="estructural")
+    print(resultado)
+"""
 
 import math
 from pathlib import Path

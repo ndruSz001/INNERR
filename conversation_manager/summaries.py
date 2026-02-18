@@ -1,3 +1,9 @@
+"""
+Copyright (c) 2026 ndrz02
+Todos los derechos reservados.
+Licencia MIT: ver LICENSE y AUTORÍA_Y_LICENCIA.md
+"""
+
 import json
 from datetime import datetime
 from conversation_manager.db import execute_query

@@ -1,6 +1,12 @@
 """
 DocumentProcessor: Procesador de PDFs e imágenes para TARS
 Centraliza rutas y lógica de ingesta usando config.py
+
+Ejemplo de uso:
+    from processing.document_processor import DocumentProcessor
+    processor = DocumentProcessor()
+    resultados = processor.buscar_en_documentos("machine learning")
+    print(resultados)
 """
 import os
 import json
@@ -149,103 +155,6 @@ class DocumentProcessor:
         })
         self.index["total"] = len(self.index["documentos"])
         self._save_index()
-
-class DocumentProcessor:
-            def buscar_en_documentos(self, query: str, categoria: Optional[str] = None) -> List[Dict]:
-                """
-                Busca texto en todos los documentos procesados.
-                Args:
-                    query: Texto a buscar
-                    categoria: Filtrar por categoría (opcional)
-                Returns:
-                    Lista de resultados con contexto
-                """
-                import re
-                resultados = []
-                for doc_file in self.docs_dir.glob("*.txt"):
-                    try:
-                        with open(doc_file, 'r', encoding='utf-8') as f:
-                            contenido = f.read()
-                        if re.search(query, contenido, re.IGNORECASE):
-                            matches = list(re.finditer(query, contenido, re.IGNORECASE))
-                            for match in matches[:3]:
-                                start = max(0, match.start() - 100)
-                                end = min(len(contenido), match.end() + 100)
-                                contexto = contenido[start:end]
-                                resultados.append({
-                                    "documento": doc_file.stem.replace("_procesado", ""),
-                                    "contexto": f"...{contexto}...",
-                                    "posicion": match.start()
-                                })
-                    except Exception:
-                        pass
-                return resultados
-
-            def extraer_informacion_clave(self, texto: str, tipo: str = "paper") -> Dict:
-                """
-                Extrae información estructurada según el tipo de documento.
-                Args:
-                    texto: Texto del documento
-                    tipo: Tipo (paper, manual, reporte)
-                Returns:
-                    Diccionario con información extraída
-                """
-                import re
-                info = {
-                    "tipo": tipo,
-                    "secciones_detectadas": [],
-                    "referencias": [],
-                    "ecuaciones": [],
-                    "figuras_mencionadas": []
-                }
-                if tipo == "paper":
-                    secciones = ["abstract", "introduction", "methods", "results", "discussion", "conclusion", "references"]
-                    for seccion in secciones:
-                        if re.search(rf'\\b{seccion}\\b', texto, re.IGNORECASE):
-                            info["secciones_detectadas"].append(seccion)
-                    figuras = re.findall(r'(?:Figure|Fig\\.?)\\s+(\\d+)', texto, re.IGNORECASE)
-                    info["figuras_mencionadas"] = list(set(figuras))
-                    refs = re.findall(r'\\[(\\d+)\\]', texto)
-                    info["referencias"] = list(set(refs))
-                elif tipo == "manual":
-                    pasos = re.findall(r'(?:Step|Paso)\\s+(\\d+)', texto, re.IGNORECASE)
-                    info["pasos_detectados"] = list(set(pasos))
-                return info
-
-            def listar_documentos(self, categoria: Optional[str] = None) -> List[Dict]:
-                """Lista todos los documentos procesados."""
-                docs = self.index.get("documentos", [])
-                if categoria:
-                    docs = [d for d in docs if d.get("categoria") == categoria]
-                return docs
-
-            def procesar_imagen(self, imagen_path: str, descripcion: str = "") -> Dict:
-                """
-                Procesa una imagen individual (diagrama, foto, etc.).
-                Args:
-                    imagen_path: Ruta a la imagen
-                    descripcion: Descripción opcional
-                Returns:
-                    Información de la imagen
-                """
-                from PIL import Image
-                imagen_path_obj = Path(imagen_path)
-                if not imagen_path_obj.exists():
-                    return {"error": f"Imagen no encontrada: {imagen_path}"}
-                try:
-                    img = Image.open(imagen_path_obj)
-                    resultado = {
-                        "nombre": imagen_path_obj.name,
-                        "ruta": str(imagen_path_obj),
-                        "descripcion": descripcion,
-                        "dimensiones": img.size,
-                        "formato": img.format,
-                        "modo": img.mode,
-                        "fecha_procesado": datetime.now().isoformat()
-                    }
-                    return resultado
-                except Exception as e:
-                    return {"error": str(e)}
         def _save_index(self) -> None:
             """Guarda el índice de documentos procesados en disco."""
             with open(self.index_file, 'w', encoding='utf-8') as f:

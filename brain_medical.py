@@ -1,6 +1,14 @@
-# Cerebro Médico - Agente Biomecánico
-# Especializado en anatomía, imágenes médicas y compatibilidad biomecánica.
-# PRIVACIDAD: Todo el análisis es 100% local, ideal para datos médicos sensibles.
+
+"""
+brain_medical.py
+Agente biomecánico especializado en anatomía, imágenes médicas y compatibilidad biomecánica.
+PRIVACIDAD: Todo el análisis es 100% local, ideal para datos médicos sensibles.
+
+Ejemplo de uso:
+    from brain_medical import BrainMedical
+    brain = BrainMedical()
+    brain.analyze("rx.png", user_context="adulto", tipo_imagen="radiografia")
+"""
 
 from pathlib import Path
 import json

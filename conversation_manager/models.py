@@ -1,6 +1,19 @@
 """
+Copyright (c) 2026 ndrz02
+Todos los derechos reservados.
+Licencia MIT: ver LICENSE y AUTORÍA_Y_LICENCIA.md
+"""
+
+"""
 models.py
 Modelos y dataclasses para Conversación, Mensaje, etc.
+
+Ejemplo de uso:
+    from conversation_manager.models import Conversacion, Mensaje
+    conv = Conversacion(id="1", titulo="Demo")
+    msg = Mensaje(id=1, conversacion_id="1", timestamp="2026-02-18T00:00:00", tipo="usuario", contenido="Hola")
+    print(conv)
+    print(msg)
 """
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional

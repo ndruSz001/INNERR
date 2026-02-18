@@ -7,6 +7,12 @@ Responsabilidad: Distribuir notificaciones
 - Suscriptores por tipo
 - Queue de mensajes
 - Entrega garantizada
+
+Ejemplo de uso:
+    from alerts.notification_service import NotificationService, EventType
+    service = NotificationService()
+    service.subscribe(EventType.USER_LOGIN, lambda n: print(n))
+    service.notify(EventType.USER_LOGIN, {"user": "test"})
 """
 
 import logging

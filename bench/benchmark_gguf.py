@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
-"""Benchmark GGUF models (Q4/Q5/Q6) using run_gguf.py on a small prompt set.
+"""
+Benchmark GGUF models (Q4/Q5/Q6) using run_gguf.py on a small prompt set.
 Produces: bench/results.csv and bench/outputs/*.txt
+
+Este script:
+- Detecta modelos GGUF Q4/Q5/Q6 en WizardLM
+- Ejecuta cada modelo con cada prompt
+- Mide tiempo de ejecución y escribe resultados
+- Guarda salidas en archivos bench/outputs/*.txt
+
+Ejemplo de uso:
+    $ python bench/benchmark_gguf.py
+
+Requiere:
+- Modelos GGUF en models/TheBloke_WizardLM-7B-uncensored-GGUF
+- run_gguf.py en el directorio raíz
+- prompts.txt en bench/
 """
 import subprocess
 import time

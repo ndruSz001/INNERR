@@ -1,3 +1,14 @@
+
+"""
+brain.py
+Análisis mecánico y cálculos de ingeniería para prototipos en TARS.
+
+Ejemplo de uso:
+    from mechanical.brain import BrainMechanical
+    brain = BrainMechanical()
+    brain.analyze("prototipo.png", user_context="robot", tipo_analisis="estructural")
+"""
+
 import math
 from pathlib import Path
 import json

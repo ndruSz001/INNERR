@@ -1,0 +1,29 @@
+{
+  "nombre_archivo": "test.pdf",
+  "ruta_original": "test.pdf",
+  "categoria": "general",
+  "fecha_procesado": "2026-02-18T14:31:39.019647",
+  "paginas": [
+    {
+      "numero": 1,
+      "texto": "Test PDF file",
+      "tablas": [],
+      "tiene_imagenes": false
+    }
+  ],
+  "metadatos": {
+    "num_paginas": 1,
+    "info": {}
+  },
+  "texto_completo": "Test PDF file",
+  "imagenes_extraidas": [
+    "/home/ndrz02/keys_1/data/documents/images/test_pagina_1.png"
+  ],
+  "tablas": [],
+  "estadisticas": {
+    "total_palabras": 3,
+    "total_caracteres": 13,
+    "total_tablas": 0,
+    "total_imagenes": 1
+  }
+}

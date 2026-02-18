@@ -100,57 +100,61 @@ class RPCClient:
         if self.session:
             await self.session.close()
     
-    async def call(self, method: str, params: Dict[str, Any] = None) -> RPCResponse:
+    async def call(self, method: str, params: Dict[str, Any] = None, retries: int = 3, retry_delay: float = 2.0) -> RPCResponse:
         """
-        Make RPC call to remote service
-        
+        Make RPC call to remote service with automatic retries and robust error handling.
         Args:
             method: RPC method name
             params: Method parameters
-        
+            retries: Number of retry attempts
+            retry_delay: Delay between retries (seconds)
         Returns:
             RPCResponse with result or error
         """
         if params is None:
             params = {}
-        
         request = RPCRequest(
             id=str(uuid.uuid4()),
             method=method,
             params=params,
             timestamp=datetime.now()
         )
-        
-        try:
-            async with self.session.post(
-                f"{self.base_url}/rpc",
-                json=request.to_dict(),
-                timeout=aiohttp.ClientTimeout(total=self.timeout)
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    return RPCResponse(
-                        id=data.get("id"),
-                        result=data.get("result"),
-                        error=data.get("error"),
-                        timestamp=datetime.fromisoformat(data.get("timestamp", datetime.now().isoformat()))
-                    )
-                else:
-                    return RPCResponse(
-                        id=request.id,
-                        error=f"HTTP {resp.status}"
-                    )
-        
-        except asyncio.TimeoutError:
-            return RPCResponse(
-                id=request.id,
-                error=f"Timeout after {self.timeout}s"
-            )
-        except Exception as e:
-            return RPCResponse(
-                id=request.id,
-                error=str(e)
-            )
+        last_error = None
+        for attempt in range(1, retries + 1):
+            logger.info(f"RPCClient: Attempt {attempt} - Calling method '{method}' at {self.base_url}/rpc with params: {params}")
+            try:
+                async with self.session.post(
+                    f"{self.base_url}/rpc",
+                    json=request.to_dict(),
+                    timeout=aiohttp.ClientTimeout(total=self.timeout)
+                ) as resp:
+                    logger.info(f"RPCClient: Response status {resp.status} for method '{method}' (attempt {attempt})")
+                    if resp.status == 200:
+                        data = await resp.json()
+                        logger.info(f"RPCClient: Success - method '{method}' result: {data.get('result')} (attempt {attempt})")
+                        return RPCResponse(
+                            id=data.get("id"),
+                            result=data.get("result"),
+                            error=data.get("error"),
+                            timestamp=datetime.fromisoformat(data.get("timestamp", datetime.now().isoformat()))
+                        )
+                    else:
+                        last_error = f"HTTP {resp.status}"
+                        logger.error(f"RPCClient: HTTP error {resp.status} for method '{method}' (attempt {attempt})")
+            except asyncio.TimeoutError:
+                last_error = f"Timeout after {self.timeout}s (attempt {attempt})"
+                logger.error(f"RPCClient: Timeout for method '{method}' (attempt {attempt})")
+            except Exception as e:
+                last_error = f"{type(e).__name__}: {e} (attempt {attempt})"
+                logger.error(f"RPCClient: Exception {type(e).__name__}: {e} for method '{method}' (attempt {attempt})")
+            if attempt < retries:
+                logger.warning(f"RPCClient: RPC call failed ({last_error}), retrying in {retry_delay}s...")
+                await asyncio.sleep(retry_delay)
+        logger.error(f"RPCClient: RPC call failed after {retries} attempts: {last_error}")
+        return RPCResponse(
+            id=request.id,
+            error=f"RPC call failed after {retries} attempts: {last_error}"
+        )
     
     async def inference(self, prompt: str, max_tokens: int = 512, 
                        temperature: float = 0.7, gpu_index: int = 0) -> RPCResponse:
@@ -306,8 +310,33 @@ class DistributedCoordinator:
         if not self.client:
             return False
         
-        response = await self.client.health_check()
-        return response.error is None
+        async def health_check_remote(self, auto_reconnect: bool = True) -> bool:
+            """
+            Periodically check health of remote node. If not healthy and auto_reconnect is True, attempt to re-initialize client.
+            Returns True if healthy, False otherwise.
+            """
+            if not self.client:
+                if auto_reconnect:
+                    logger.warning("DistributedCoordinator: No remote client, attempting reconnection...")
+                    await self.initialize()
+                return False
+            try:
+                response = await self.client.health_check()
+                if response.error is None:
+                    logger.info("DistributedCoordinator: Remote node healthy.")
+                    return True
+                else:
+                    logger.warning(f"DistributedCoordinator: Remote node unhealthy: {response.error}")
+                    if auto_reconnect:
+                        logger.info("DistributedCoordinator: Attempting reconnection...")
+                        await self.initialize()
+                    return False
+            except Exception as e:
+                logger.error(f"DistributedCoordinator: Exception during health check: {e}")
+                if auto_reconnect:
+                    logger.info("DistributedCoordinator: Attempting reconnection...")
+                    await self.initialize()
+                return False
 
 
 if __name__ == "__main__":

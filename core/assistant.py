@@ -1,3 +1,14 @@
+"""
+assistant.py
+Módulo principal del asistente inteligente TARS.
+
+Contiene la clase TarsAsistenteInteligente y la lógica de interacción/chat.
+
+Ejemplo de uso:
+	from core.assistant import TarsAsistenteInteligente
+	asistente = TarsAsistenteInteligente()
+	asistente.chat_loop()
+"""
 # Extraído de tars_asistente.py
 import re
 import sys

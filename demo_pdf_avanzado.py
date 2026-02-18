@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 """
-Demostración de Funcionalidades Avanzadas de Procesamiento de PDFs
-TARS - Sistema mejorado para investigación científica
+demo_pdf_avanzado.py
+--------------------
+Demostración de funcionalidades avanzadas de procesamiento de PDFs en TARS.
+Incluye OCR, extracción de metadatos, resumen y análisis de papers científicos.
+
+Uso:
+    python3 demo_pdf_avanzado.py <archivo.pdf>   # Ejecuta demo completo sobre un PDF
+    python3 demo_pdf_avanzado.py                 # Muestra menú interactivo
+
+Salida:
+    Muestra resultados de OCR, metadatos, resumen y análisis en consola.
+
+Autoría: Proyecto TARS (ver AUTORÍA_Y_LICENCIA.md)
 """
 
 import sys

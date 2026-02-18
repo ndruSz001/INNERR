@@ -1,3 +1,16 @@
+
+"""
+memory.py
+Sistema de Memoria Episódica para TARS.
+Recuerda experiencias, preferencias y contexto del usuario a largo plazo.
+
+Ejemplo de uso:
+    from episodic.memory import EpisodicMemory
+    mem = EpisodicMemory(user_id="usuario")
+    mem.guardar_evento("inicio_sesion", {"hora": "10:00"})
+    print(mem.obtener_contexto_actual())
+"""
+
 import re
 import json
 from datetime import datetime, timedelta

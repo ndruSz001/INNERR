@@ -1,3 +1,12 @@
+# utils.py
+"""
+Funciones utilitarias para gestión de conversaciones en TARS.
+
+Ejemplo de uso:
+	# from conversation_manager.utils import <funcion>
+	# resultado = <funcion>(...)
+	# print(resultado)
+"""
 """
 utils.py
 Funciones auxiliares y helpers para ConversationManager.

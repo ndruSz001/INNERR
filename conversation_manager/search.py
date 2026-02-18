@@ -1,5 +1,7 @@
 """
-Search and intelligent retrieval functions for conversation management.
+Copyright (c) 2026 ndrz02
+Todos los derechos reservados.
+Licencia MIT: ver LICENSE y AUTORÍA_Y_LICENCIA.md
 """
 
 # Functions to be moved from conversation_manager.py:

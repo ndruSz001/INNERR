@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 """
-Demostración del Sistema de Grafo de Conocimiento
-Crea conversaciones de ejemplo y muestra capacidades
+demo_grafo_conocimiento.py
+-------------------------
+Demostración del Sistema de Grafo de Conocimiento de TARS.
+Crea conversaciones de ejemplo, simula escenarios de investigación y muestra las capacidades del grafo.
+
+Uso:
+    python3 demo_grafo_conocimiento.py
+
+Salida:
+    Muestra en consola el flujo de conversaciones, conclusiones y relaciones en el grafo de conocimiento.
+
+Autoría: Proyecto TARS (ver AUTORÍA_Y_LICENCIA.md)
 """
 
 from conversation_manager import ConversationManager

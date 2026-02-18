@@ -1,3 +1,16 @@
+
+"""
+tools.py
+Herramientas externas y utilidades para TARS.
+Permite obtener información de clima, hora, web, Wikipedia y noticias.
+
+Ejemplo de uso:
+    from tars_tools.tools import TarsTools
+    tools = TarsTools()
+    resultado = tools.ejecutar_herramienta("clima", ciudad="Madrid")
+    print(resultado)
+"""
+
 import requests
 import json
 from datetime import datetime

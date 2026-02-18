@@ -1,0 +1,19 @@
+{
+  "documentos": [
+    {
+      "nombre": "test.pdf",
+      "categoria": "general",
+      "fecha": "2026-02-18T14:14:10.462856",
+      "palabras": 3,
+      "paginas": 1
+    },
+    {
+      "nombre": "test.pdf",
+      "categoria": "general",
+      "fecha": "2026-02-18T14:31:39.019647",
+      "palabras": 3,
+      "paginas": 1
+    }
+  ],
+  "total": 2
+}

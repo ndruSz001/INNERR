@@ -1,5 +1,11 @@
 """
-Configuración centralizada de logging para TARS
+logging_config.py
+Configuración centralizada de logging para TARS.
+
+Ejemplo de uso:
+    from core.logging_config import get_logger
+    logger = get_logger(__name__)
+    logger.info("Mensaje de prueba")
 """
 import logging
 import os

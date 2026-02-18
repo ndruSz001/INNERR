@@ -1,6 +1,16 @@
 """
-graph.py
+Copyright (c) 2026 ndrz02
+Todos los derechos reservados.
+Licencia MIT: ver LICENSE y AUTORÍA_Y_LICENCIA.md
+"""
+
+# graph.py
+"""
 Gestión de relaciones y grafo de conocimiento entre conversaciones.
+
+Ejemplo de uso:
+	from conversation_manager.graph import crear_conversacion_integradora
+	crear_conversacion_integradora("conversations.db", "Síntesis", "Objetivo", ["id1", "id2"])
 """
 # Aquí se migrará la lógica de relaciones y grafo
 import json

@@ -1,3 +1,14 @@
+
+"""
+brain.py
+Análisis de diseño conceptual, ergonomía y estética para TARS.
+
+Ejemplo de uso:
+    from conceptual.brain import BrainConceptual
+    brain = BrainConceptual()
+    brain.analyze("boceto.png", user_context="adulto", tipo_analisis="ergonomia")
+"""
+
 from pathlib import Path
 import json
 

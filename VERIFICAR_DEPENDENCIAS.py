@@ -1,6 +1,17 @@
+
 #!/usr/bin/env python3
 """
-Verificar que todas las dependencias requeridas están disponibles
+VERIFICAR_DEPENDENCIAS.py
+------------------------
+Script para verificar que todas las dependencias requeridas del proyecto TARS estén instaladas.
+
+Uso:
+    python3 VERIFICAR_DEPENDENCIAS.py
+
+Salida:
+    Muestra el estado de cada dependencia y recomendaciones de instalación.
+
+Autoría: Proyecto TARS (ver AUTORÍA_Y_LICENCIA.md)
 """
 
 def check_dependency(package, import_name=None):

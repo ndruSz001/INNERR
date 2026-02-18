@@ -1,3 +1,13 @@
+"""
+ia_simple.py
+Versión simplificada de TARS para respuestas inteligentes sin dependencias pesadas.
+
+Ejemplo de uso:
+    from core.ia_simple import TarsVisionSimple
+    tars = TarsVisionSimple()
+    print(tars.generar_respuesta("Hola, ¿qué puedes hacer?"))
+"""
+
 import json
 import random
 from datetime import datetime

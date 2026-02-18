@@ -1,4 +1,20 @@
+
 #!/bin/bash
+# ------------------------------------------------------------------------------
+# verify_distributed_setup.sh
+# ------------------------------------------------------------------------------
+# Script de verificación rápida para el entorno distribuido de TARS.
+# Comprueba Python, PyTorch, CUDA, módulos requeridos, archivos clave,
+# documentación, red, almacenamiento y módulos RPC/GPU.
+#
+# Uso:
+#   bash verify_distributed_setup.sh
+#
+# Salida:
+#   Muestra el estado de cada verificación y un resumen final.
+#
+# Autoría: Proyecto TARS (ver AUTORÍA_Y_LICENCIA.md)
+# ------------------------------------------------------------------------------
 
 # Quick Verification Script for Distributed System Setup
 # Verifica rápidamente si el sistema está listo

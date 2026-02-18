@@ -1,3 +1,14 @@
+
+"""
+brain.py
+Análisis de imágenes médicas y compatibilidad biomecánica para TARS.
+
+Ejemplo de uso:
+    from medical.brain import BrainMedical
+    brain = BrainMedical()
+    brain.analyze("radiografia.png", user_context="adulto", tipo_imagen="radiografia")
+"""
+
 from pathlib import Path
 import json
 from datetime import datetime

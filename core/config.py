@@ -1,6 +1,11 @@
 """
-Configuración centralizada para TARS
-Incluye rutas, parámetros y settings globales
+config.py
+Configuración centralizada para TARS.
+Incluye rutas, parámetros y settings globales.
+
+Ejemplo de uso:
+    from core.config import DATA_DIR, DEFAULT_TEXT_MODEL
+    print(DATA_DIR)
 """
 import os
 from pathlib import Path

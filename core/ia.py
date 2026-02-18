@@ -1,5 +1,12 @@
 """
+ia.py
 Lógica principal de IA, modelos y razonamiento para TARS.
+
+Ejemplo de uso:
+    from core.ia import TarsIA
+    ia = TarsIA()
+    respuesta = ia.generar_respuesta("¿Qué es TARS?")
+    print(respuesta)
 """
 
 import json

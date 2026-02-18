@@ -131,6 +131,10 @@ class DistributedApp:
         # Health check
         @self.app.get("/health", response_model=HealthResponse)
         async def health():
+            """
+            Health check endpoint for distributed node.
+            Returns status, timestamp, PC name, VRAM, GPU count, and coordinator flag.
+            """
             return HealthResponse(
                 status="ok",
                 timestamp=datetime.now(),
@@ -143,8 +147,10 @@ class DistributedApp:
         # Status endpoint
         @self.app.get("/status", response_model=StatusResponse)
         async def status():
+            """
+            Returns detailed status of the node, including GPU info and uptime.
+            """
             uptime = (datetime.now() - self.start_time).total_seconds()
-            
             gpu_info = {}
             for gpu in self.gpus:
                 gpu_info[f"gpu_{gpu.index}"] = {
@@ -154,7 +160,6 @@ class DistributedApp:
                     "vram_free_gb": gpu.vram_free_gb,
                     "cuda_cores": gpu.cuda_cores
                 }
-            
             return StatusResponse(
                 pc_name=self.pc_name,
                 host=self.host,
@@ -169,9 +174,14 @@ class DistributedApp:
         async def inference(request: InferenceRequest):
             """Run inference on this PC or forward to remote"""
             
-            # If we're PC2 and it's not our model, forward to PC1
-            if not self.system_config.is_coordinator and request.gpu_index != 0:
+            # Optimización: PC2 procesa embeddings y modelos pequeños localmente,
+            # reenvía solo inferencias de modelos grandes a PC1.
+            LARGE_MODELS = ["mistral-7b", "llama-13b", "llama-2-13b", "falcon-7b", "falcon-40b"]
+            model = getattr(request, "model", None)
+            # Si PC2 y el modelo es grande, reenviar a PC1
+            if not self.system_config.is_coordinator and (model in LARGE_MODELS or request.gpu_index != 0):
                 try:
+                    logger.info(f"PC2: Reenviando inferencia de modelo grande '{model}' a PC1...")
                     response = await self.coordinator.call_remote(
                         RPCMethod.INFERENCE_QUERY.value,
                         **request.dict()
@@ -182,14 +192,15 @@ class DistributedApp:
                 except Exception as e:
                     logger.error(f"Remote inference failed: {e}")
                     raise HTTPException(status_code=500, detail=str(e))
-            
-            # Local inference
-            try:
-                result = await self._local_inference(request)
-                return result
-            except Exception as e:
-                logger.error(f"Inference error: {e}")
-                raise HTTPException(status_code=500, detail=str(e))
+            else:
+                # Local inference (embeddings y modelos pequeños)
+                try:
+                    logger.info(f"{self.pc_name}: Procesando inferencia localmente (modelo: {model})")
+                    result = await self._local_inference(request)
+                    return result
+                except Exception as e:
+                    logger.error(f"Inference error: {e}")
+                    raise HTTPException(status_code=500, detail=str(e))
         
         # Embedding endpoint
         @self.app.post("/embed")
