@@ -1,3 +1,16 @@
+# 🕸️ Arquitectura Distribuida y Mejoras Recientes
+
+El sistema ahora soporta ejecución distribuida entre múltiples nodos (PC1, PC2, etc), con las siguientes características:
+
+- **Inferencia real modular**: cada nodo puede ejecutar modelos o delegar tareas según reglas configurables.
+- **Balanceo de carga inteligente**: las tareas se asignan dinámicamente según el tipo de modelo y recursos.
+- **Caché distribuido y persistente**: resultados de inferencia se almacenan y recuperan incluso tras reinicios.
+- **Tolerancia a fallos**: manejo de errores y persistencia del caché para robustez ante caídas.
+- **Seguridad básica**: endpoints protegidos por API key configurable.
+- **Escalabilidad**: arquitectura preparada para agregar más nodos fácilmente.
+- **Métricas y monitoreo**: endpoint /metrics compatible con Prometheus para observabilidad y dashboards.
+
+Consulta `distributed/MEJORAS_FUTURAS.md` para roadmap y detalles técnicos.
 # TARS - IA Personal Inteligente ⚡
 
 > **NUEVO**: Ahora con aceleración **llama.cpp** - respuestas 4x más rápidas 🚀

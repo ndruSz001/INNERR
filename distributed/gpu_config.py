@@ -7,6 +7,7 @@ GTX 1660 Super: 6GB VRAM - Smaller models, embeddings, light inference
 """
 
 import os
+import sys
 import torch
 import psutil
 import json
@@ -161,7 +162,7 @@ class GPUDetector:
             "cpu_cores": psutil.cpu_count(logical=False),
             "cpu_cores_logical": psutil.cpu_count(logical=True),
             "ram_gb": psutil.virtual_memory().total / (1024**3),
-            "python_version": os.popen("python --version").read().strip(),
+            "python_version": os.popen(sys.executable + " --version").read().strip(),
             "torch_version": torch.__version__,
             "cuda_version": torch.version.cuda,
         }

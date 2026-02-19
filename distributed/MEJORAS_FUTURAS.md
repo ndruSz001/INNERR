@@ -1,12 +1,17 @@
-# Mejoras implementadas y pendientes (Sprint actual)
 
-1. Mejorar endpoints y documentación RPC (completado)
-2. Implementar reintentos y manejo de errores en RPC (completado)
-3. Agregar logs detallados de comunicación (completado)
-4. Optimizar uso de recursos entre PC1 y PC2 (completado)
-5. Automatizar reconexión y monitoreo de nodos (completado)
-6. Documentar flujo distribuido en README (completado)
-7. Agregar pruebas de carga y stress (completado)
+# Mejoras implementadas (Sprint actual)
+
+1. Endpoints y documentación RPC mejorados
+2. Reintentos y manejo de errores en RPC
+3. Logs detallados de comunicación
+4. Optimización de recursos entre PC1 y PC2
+5. Reconexión y monitoreo automático de nodos
+6. Documentación del flujo distribuido
+7. Pruebas de carga y stress
+8. Tolerancia a fallos y persistencia del caché (caché se guarda/carga en disco)
+9. Seguridad básica en endpoints RPC (API key configurable)
+10. Escalabilidad preparada para múltiples nodos (estructura extensible)
+11. Métricas y monitoreo expuestos vía endpoint /metrics (Prometheus)
 
 # Mejoras Futuras para Arquitectura Distribuida
 

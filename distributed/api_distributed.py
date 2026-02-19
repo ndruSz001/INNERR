@@ -91,6 +91,8 @@ class DistributedApp:
         )
         
         # Initialize distributed coordinator
+        # Punto de extensión: aquí se puede registrar una lista de nodos workers y coordinadores
+        # para permitir escalabilidad horizontal (más de 2 PCs)
         self.coordinator = DistributedCoordinator(
             pc_name=pc_name,
             host=host,
@@ -98,6 +100,7 @@ class DistributedApp:
             remote_host=remote_host,
             remote_port=remote_port
         )
+        # self.workers = []  # Ejemplo: lista de workers para balanceo avanzado
         
         # GPU configuration
         self.config = DistributedConfig(pc_name, host, port)
@@ -111,6 +114,27 @@ class DistributedApp:
         logger.info(f"   Total VRAM: {self.system_config.total_vram_gb:.1f}GB")
         logger.info(f"   GPUs: {len(self.gpus)}")
         
+
+        # Inference engine (modular, desacoplado)
+        from distributed.inference_engine import InferenceEngine
+        self.inference_engine = InferenceEngine()
+
+        # Load balancer (modular, desacoplado)
+        from distributed.load_balancer import LoadBalancer
+        self.load_balancer = LoadBalancer()
+
+        # Cache manager (modular, desacoplado)
+        from distributed.cache_manager import CacheManager
+        self.cache_manager = CacheManager(persist_path=f"cache_{pc_name}.json")
+        @self.app.on_event("shutdown")
+        async def shutdown_event_cache():
+            # Guardar caché en disco al apagar
+            self.cache_manager.save()
+
+        # Metrics manager (modular, desacoplado)
+        from distributed.metrics_manager import MetricsManager
+        self.metrics_manager = MetricsManager()
+
         # Setup routes
         self._setup_routes()
         self._setup_rpc_handlers()
@@ -170,41 +194,68 @@ class DistributedApp:
             )
         
         # Inference endpoint
+        from fastapi import Header
+        API_KEY = os.environ.get("DISTRIBUTED_API_KEY", "changeme")
+
         @self.app.post("/inference")
-        async def inference(request: InferenceRequest):
+        async def inference(request: InferenceRequest, x_api_key: str = Header(None)):
+            # Seguridad básica por API key
+            if x_api_key != API_KEY:
+                raise HTTPException(status_code=401, detail="Invalid API key")
             """Run inference on this PC or forward to remote"""
             
             # Optimización: PC2 procesa embeddings y modelos pequeños localmente,
             # reenvía solo inferencias de modelos grandes a PC1.
-            LARGE_MODELS = ["mistral-7b", "llama-13b", "llama-2-13b", "falcon-7b", "falcon-40b"]
+            # Decisión modular de balanceo
+            should_delegate = self.load_balancer.should_delegate(request.dict(), self.system_config.is_coordinator)
             model = getattr(request, "model", None)
-            # Si PC2 y el modelo es grande, reenviar a PC1
-            if not self.system_config.is_coordinator and (model in LARGE_MODELS or request.gpu_index != 0):
-                try:
-                    logger.info(f"PC2: Reenviando inferencia de modelo grande '{model}' a PC1...")
+            import time
+            start_time = time.time()
+            cache_hit = self.cache_manager.get(request.dict())
+            if cache_hit is not None:
+                logger.info(f"{self.pc_name}: Respondiendo desde caché (modelo: {model})")
+                self.metrics_manager.record_cache_hit()
+                self.metrics_manager.record_inference(0.0)
+                return cache_hit
+            else:
+                self.metrics_manager.record_cache_miss()
+
+            try:
+                if should_delegate:
+                    logger.info(f"{self.pc_name}: Reenviando inferencia delegada (modelo: {model}) al coordinador...")
                     response = await self.coordinator.call_remote(
                         RPCMethod.INFERENCE_QUERY.value,
                         **request.dict()
                     )
                     if response.error:
+                        self.metrics_manager.record_error()
                         raise HTTPException(status_code=500, detail=response.error)
+                    self.cache_manager.set(request.dict(), response.result)
+                    latency = time.time() - start_time
+                    self.metrics_manager.record_inference(latency)
                     return response.result
-                except Exception as e:
-                    logger.error(f"Remote inference failed: {e}")
-                    raise HTTPException(status_code=500, detail=str(e))
-            else:
-                # Local inference (embeddings y modelos pequeños)
-                try:
+                else:
                     logger.info(f"{self.pc_name}: Procesando inferencia localmente (modelo: {model})")
                     result = await self._local_inference(request)
+                    self.cache_manager.set(request.dict(), result)
+                    latency = time.time() - start_time
+                    self.metrics_manager.record_inference(latency)
                     return result
-                except Exception as e:
-                    logger.error(f"Inference error: {e}")
-                    raise HTTPException(status_code=500, detail=str(e))
+            except Exception as e:
+                self.metrics_manager.record_error()
+                logger.error(f"Inference error: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+                # Endpoint para métricas Prometheus
+                @self.app.get("/metrics")
+                async def metrics():
+                    """Exponer métricas en formato Prometheus"""
+                    return self.metrics_manager.prometheus_format()
         
         # Embedding endpoint
         @self.app.post("/embed")
-        async def embed(request: EmbeddingRequest):
+        async def embed(request: EmbeddingRequest, x_api_key: str = Header(None)):
+            if x_api_key != API_KEY:
+                raise HTTPException(status_code=401, detail="Invalid API key")
             """Generate embedding"""
             
             try:
@@ -284,18 +335,14 @@ class DistributedApp:
         )
     
     async def _local_inference(self, request: InferenceRequest) -> Dict[str, Any]:
-        """Local inference implementation"""
-        
-        # For now, mock response
-        # In production, integrate with actual LLM engine
-        
-        return {
-            "prompt": request.prompt,
-            "response": f"[MOCK] Response from {self.pc_name}",
-            "tokens_generated": request.max_tokens,
-            "gpu_used": request.gpu_index,
-            "timestamp": datetime.now().isoformat()
-        }
+        """Local inference implementation (delegated to inference engine)"""
+        # Convierte el request pydantic a dict y delega en el motor modular
+        input_data = request.dict()
+        result = self.inference_engine.infer(input_data)
+        # Puedes agregar metadatos adicionales si lo deseas
+        result["timestamp"] = datetime.now().isoformat()
+        result["pc_name"] = self.pc_name
+        return result
     
     async def _local_embed(self, request: EmbeddingRequest) -> Dict[str, Any]:
         """Local embedding implementation"""
