@@ -250,9 +250,7 @@ class RPCServer:
             response = await self.handle_rpc(data)
             return response.to_dict()
         
-        @app.get("/health")
-        async def health_endpoint():
-            return {"status": "ok", "timestamp": datetime.now().isoformat()}
+        # Eliminado endpoint duplicado /health para evitar conflicto con api_distributed.py
         
         logger.info(f"✅ FastAPI routes setup at {self.host}:{self.port}")
 
